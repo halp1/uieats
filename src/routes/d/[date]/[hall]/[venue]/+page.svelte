@@ -3,12 +3,15 @@
 	import DateStrip from '$lib/components/DateStrip.svelte';
 	import DietFilter from '$lib/components/DietFilter.svelte';
 	import VenueMenu from '$lib/components/VenueMenu.svelte';
-	import { formatCampusDate, formatClock } from '$lib/dates';
+	import { currentMeal, formatCampusDate, formatClock } from '$lib/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	const view = $derived(data.scope.venues[0] ?? null);
+	// This page shows the whole day rather than one sitting, so the time of day
+	// marks the current one instead of selecting it.
+	const nowServing = $derived(data.date === data.today ? currentMeal() : null);
 	const path = $derived(`${data.scope.root.slug}/${data.venue.slug}`);
 </script>
 
@@ -75,7 +78,7 @@
 				</p>
 			</div>
 		{:else}
-			<VenueMenu venue={view} showHeading={false} filtered={data.diets.length > 0} />
+			<VenueMenu venue={view} showHeading={false} filtered={data.diets.length > 0} {nowServing} />
 		{/if}
 	</div>
 {/if}

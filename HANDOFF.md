@@ -197,7 +197,16 @@ relevant code. The first eight are inherited and still true; the rest are new.
     re-reading a label, so neither a matcher change nor an alias edit reaches
     the back catalogue on its own. This closes the gap the old handoff noted
     under `name_checked_at`.
-21. **A `partial` run is a signal, not noise.** All three bugs above showed up
+21. **The service worker caches assets only, never pages.** A cached menu is a
+    set of allergen claims the app can no longer stand behind, and in standalone
+    PWA display there is no address bar to suggest what you are reading is not
+    live. The whole app is built on making staleness visible; a cache-first
+    worker would quietly undo it. Offline gets an honest page instead.
+22. **The meal tab auto-selects from campus time, but only for today.** The hour
+    says what you want NOW and nothing about a day you are planning for, so a
+    future date opens at the top. All-day stations ("Beverages", "Waffle Bar")
+    are never auto-selected. `defaultMeal` in `$lib/dates.ts`, with tests.
+23. **A `partial` run is a signal, not noise.** All three bugs above showed up
     first as a status or a count that was slightly off, and each was easy to
     read as "flaky upstream". None of them were.
 

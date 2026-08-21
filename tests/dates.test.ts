@@ -10,7 +10,11 @@
 import { describe, expect, it } from 'vitest';
 import {
 	addDays,
+	campusHour,
 	campusToday,
+	currentMeal,
+	defaultMeal,
+	mealAtHour,
 	describeAge,
 	formatCampusDate,
 	formatClock,
@@ -161,5 +165,110 @@ describe('describeAge', () => {
 
 	it('never reports a negative age from clock skew', () => {
 		expect(describeAge(NOW + 500, NOW)).toBe('just now');
+	});
+});
+
+describe('campusHour', () => {
+	it('is the campus clock, not the server clock', () => {
+		// 02:30 UTC is 21:30 the previous evening in Chicago. A server reading its
+		// own clock would call that breakfast time.
+		expect(campusHour(new Date('2026-08-22T02:30:00Z'))).toBe(21);
+	});
+
+	it('tracks the DST offset rather than assuming one', () => {
+		// 15:00 UTC is 09:00 CDT in summer and 09:00 CST in winter -- different
+		// offsets, same local hour, which is the point.
+		expect(campusHour(new Date('2026-07-01T14:00:00Z'))).toBe(9);
+		expect(campusHour(new Date('2026-01-01T15:00:00Z'))).toBe(9);
+	});
+});
+
+describe('mealAtHour', () => {
+	it.each([
+		[0, 'Breakfast'],
+		[7, 'Breakfast'],
+		[9, 'Breakfast'],
+		// The boundaries, exactly: 10:00 is lunch, 14:00 is dinner.
+		[10, 'Lunch'],
+		[13, 'Lunch'],
+		[14, 'Dinner'],
+		[19, 'Dinner'],
+		[23, 'Dinner']
+	])('%d:00 -> %s', (hour, expected) => {
+		expect(mealAtHour(hour)).toBe(expected);
+	});
+
+	it('maps every hour to a sitting, with no gaps', () => {
+		// There is deliberately no "closed" answer: at 22:00 you are looking at
+		// what dinner was, not at nothing.
+		for (let h = 0; h < 24; h++) {
+			expect(['Breakfast', 'Lunch', 'Dinner']).toContain(mealAtHour(h));
+		}
+	});
+
+	it('is what currentMeal reports for the same instant', () => {
+		const at = new Date('2026-08-21T18:00:00Z'); // 13:00 CDT
+		expect(currentMeal(at)).toBe(mealAtHour(campusHour(at)));
+		expect(currentMeal(at)).toBe('Lunch');
+	});
+});
+
+describe('defaultMeal', () => {
+	const ALL = ['Breakfast', 'Lunch', 'Dinner'];
+	const TODAY = '2026-08-21';
+	const at = (hour: number) => new Date(`2026-08-21T${String(hour + 5).padStart(2, '0')}:00:00Z`);
+
+	it('opens on the sitting being served now', () => {
+		expect(defaultMeal(ALL, { date: TODAY, today: TODAY, at: at(8) })).toBe('Breakfast');
+		expect(defaultMeal(ALL, { date: TODAY, today: TODAY, at: at(12) })).toBe('Lunch');
+		expect(defaultMeal(ALL, { date: TODAY, today: TODAY, at: at(18) })).toBe('Dinner');
+	});
+
+	it('ignores the clock on any other day', () => {
+		// The time of day says what you want NOW; it says nothing about a day you
+		// are planning for. Opening next Tuesday at 21:00 starts at its top.
+		expect(defaultMeal(ALL, { date: '2026-08-25', today: TODAY, at: at(21) })).toBe('Breakfast');
+	});
+
+	it('falls forward to the next sitting a venue actually serves', () => {
+		// Lunch-and-dinner venue, opened at breakfast time.
+		expect(defaultMeal(['Lunch', 'Dinner'], { date: TODAY, today: TODAY, at: at(8) })).toBe(
+			'Lunch'
+		);
+	});
+
+	it('falls back when there is nothing later', () => {
+		// A breakfast-only venue opened in the evening lands on breakfast rather
+		// than on nothing.
+		expect(defaultMeal(['Breakfast'], { date: TODAY, today: TODAY, at: at(19) })).toBe('Breakfast');
+	});
+
+	it('handles the sittings between the named ones', () => {
+		expect(
+			defaultMeal(['Breakfast', 'Light Lunch', 'Dinner'], { date: TODAY, today: TODAY, at: at(12) })
+		).toBe('Light Lunch');
+	});
+
+	it('never auto-selects an all-day station', () => {
+		// Upstream files "Beverages" and "Waffle Bar" under `meal` too. Those are
+		// chosen deliberately or not at all -- opening Build Your Own on Condiments
+		// because of the hour would be absurd.
+		expect(
+			defaultMeal(['Breakfast', 'Beverages', 'Waffle Bar'], {
+				date: TODAY,
+				today: TODAY,
+				at: at(19)
+			})
+		).toBe('Breakfast');
+	});
+
+	it('takes the first entry when a venue offers no recognisable sitting', () => {
+		expect(
+			defaultMeal(['Beverages', 'Condiments'], { date: TODAY, today: TODAY, at: at(12) })
+		).toBe('Beverages');
+	});
+
+	it('has nothing to say about an empty menu', () => {
+		expect(defaultMeal([], { date: TODAY, today: TODAY, at: at(12) })).toBeNull();
 	});
 });

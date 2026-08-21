@@ -128,3 +128,66 @@ export function describeAge(then: number | null, at: number = unixNow()): string
  * visible, never silent.
  */
 export const STALE_AFTER_SECONDS = 30 * 60 * 60;
+
+/** Campus wall-clock hour, 0-23, for the given instant. */
+export function campusHour(at: Date = new Date()): number {
+	return Number(
+		new Intl.DateTimeFormat('en-GB', {
+			timeZone: CAMPUS_TIME_ZONE,
+			hour: '2-digit',
+			hour12: false
+		}).format(at)
+	);
+}
+
+/**
+ * Which sitting a person opening the app right now is most likely asking about.
+ *
+ * Boundaries are 10:00 and 14:00 campus time. They are cutoffs rather than
+ * service windows on purpose: at 09:00 you are choosing breakfast, and at 22:00
+ * you are looking at what dinner was, so there is no "closed" answer -- every
+ * hour maps to a sitting.
+ */
+export function mealAtHour(hour: number): 'Breakfast' | 'Lunch' | 'Dinner' {
+	if (hour < 10) return 'Breakfast';
+	if (hour < 14) return 'Lunch';
+	return 'Dinner';
+}
+
+export function currentMeal(at: Date = new Date()): 'Breakfast' | 'Lunch' | 'Dinner' {
+	return mealAtHour(campusHour(at));
+}
+
+/**
+ * The sitting to open a location on.
+ *
+ * Only applied to TODAY. Opening next Tuesday at 21:00 should start at the top
+ * of that day rather than at its dinner -- the time of day says something about
+ * what you want now, and nothing about a day you are planning for.
+ *
+ * Falls forward, then back, through the sittings the venue actually offers: a
+ * dinner-only venue opened at breakfast time should land on dinner rather than
+ * on nothing. Anything upstream files under `meal` that is not a sitting at all
+ * -- the all-day stations, "Beverages", "Waffle Bar" -- is never auto-selected,
+ * only ever chosen deliberately.
+ */
+export function defaultMeal(
+	available: readonly string[],
+	options: { date: string; today: string; at?: Date }
+): string | null {
+	if (available.length === 0) return null;
+
+	const sittings = ['Breakfast', 'Brunch', 'Lunch', 'Light Lunch', 'Dinner', 'Late Night'];
+	const offered = available.filter((m) => sittings.includes(m));
+
+	// A different day, or a venue with no recognisable sitting at all: take the
+	// first thing on offer, which mealSort has already put in serving order.
+	if (options.date !== options.today || offered.length === 0) return available[0];
+
+	const wanted = currentMeal(options.at ?? new Date());
+	const wantedRank = sittings.indexOf(wanted);
+
+	// Nearest at or after the current sitting, else the last one before it.
+	const after = offered.find((m) => sittings.indexOf(m) >= wantedRank);
+	return after ?? offered[offered.length - 1];
+}
