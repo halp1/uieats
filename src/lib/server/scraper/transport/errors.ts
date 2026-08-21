@@ -1,21 +1,28 @@
 export class TransportError extends Error {
-	constructor(
-		message: string,
-		readonly cause?: unknown
-	) {
+	// Explicit fields, not parameter properties: Node's type-stripping is
+	// strip-only and cannot desugar `constructor(private readonly x: T)`. The
+	// scraper CLI runs under plain node, so that syntax fails at load time even
+	// though vitest's transform accepts it.
+	readonly cause?: unknown;
+
+	constructor(message: string, cause?: unknown) {
 		super(message);
 		this.name = 'TransportError';
+		this.cause = cause;
 	}
 }
 
 export class HttpStatusError extends TransportError {
-	constructor(
-		readonly status: number,
-		readonly url: string,
-		readonly bodyExcerpt: string
-	) {
+	readonly status: number;
+	readonly url: string;
+	readonly bodyExcerpt: string;
+
+	constructor(status: number, url: string, bodyExcerpt: string) {
 		super(`HTTP ${status} from ${url}: ${bodyExcerpt.slice(0, 200)}`);
 		this.name = 'HttpStatusError';
+		this.status = status;
+		this.url = url;
+		this.bodyExcerpt = bodyExcerpt;
 	}
 
 	/** 5xx and the two "come back later" 4xx are worth another attempt. */

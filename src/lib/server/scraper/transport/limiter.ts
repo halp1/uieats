@@ -14,21 +14,32 @@ export class RateLimiter {
 	#lastStart = Number.NEGATIVE_INFINITY;
 	readonly #queue: (() => void)[] = [];
 
+	readonly #concurrency: number;
+	readonly #minIntervalMs: number;
+	/** Injectable so tests need neither a real clock nor real sleeping. */
+	readonly #now: () => number;
+	readonly #sleep: (ms: number) => Promise<void>;
+
+	// Explicit fields rather than parameter properties: Node's strip-only type
+	// removal cannot desugar those, and the scraper CLI runs under plain node.
 	constructor(
-		private readonly concurrency: number,
-		private readonly minIntervalMs: number,
-		/** Injectable so tests need neither a real clock nor real sleeping. */
-		private readonly now: () => number = () => Date.now(),
-		private readonly sleep: (ms: number) => Promise<void> = (ms) =>
-			new Promise((r) => setTimeout(r, ms))
-	) {}
+		concurrency: number,
+		minIntervalMs: number,
+		now: () => number = () => Date.now(),
+		sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))
+	) {
+		this.#concurrency = concurrency;
+		this.#minIntervalMs = minIntervalMs;
+		this.#now = now;
+		this.#sleep = sleep;
+	}
 
 	async run<T>(task: () => Promise<T>): Promise<T> {
 		await this.#acquire();
 		try {
-			const wait = this.#lastStart + this.minIntervalMs - this.now();
-			if (wait > 0) await this.sleep(wait);
-			this.#lastStart = this.now();
+			const wait = this.#lastStart + this.#minIntervalMs - this.#now();
+			if (wait > 0) await this.#sleep(wait);
+			this.#lastStart = this.#now();
 			return await task();
 		} finally {
 			this.#release();
@@ -36,7 +47,7 @@ export class RateLimiter {
 	}
 
 	async #acquire(): Promise<void> {
-		if (this.#active < this.concurrency) {
+		if (this.#active < this.#concurrency) {
 			this.#active++;
 			return;
 		}

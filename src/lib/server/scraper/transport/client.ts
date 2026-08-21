@@ -46,10 +46,15 @@ export class NetNutritionClient implements Transport {
 	#requests = 0;
 	#rebootstraps = 0;
 
-	constructor(
-		private readonly config: ScraperConfig,
-		private readonly fetchImpl: typeof fetch = fetch
-	) {
+	readonly #config: ScraperConfig;
+	readonly #fetchImpl: typeof fetch;
+
+	// Explicit fields rather than parameter properties: Node's strip-only type
+	// removal cannot desugar those, and this file is loaded by the CLI under
+	// plain node.
+	constructor(config: ScraperConfig, fetchImpl: typeof fetch = fetch) {
+		this.#config = config;
+		this.#fetchImpl = fetchImpl;
 		this.#limiter = new RateLimiter(config.concurrency, config.minIntervalMs);
 	}
 
@@ -60,7 +65,7 @@ export class NetNutritionClient implements Transport {
 	#headers(extra: Record<string, string> = {}): Record<string, string> {
 		const cookie = this.#jar.header();
 		return {
-			'User-Agent': this.config.userAgent,
+			'User-Agent': this.#config.userAgent,
 			// See the note at the top of this file. Do not remove.
 			'Accept-Language': 'en-US,en;q=0.9',
 			Accept: '*/*',
@@ -70,8 +75,8 @@ export class NetNutritionClient implements Transport {
 	}
 
 	#budgetCheck(): void {
-		if (this.config.maxRequests !== undefined && this.#requests >= this.config.maxRequests) {
-			throw new RequestBudgetExceeded(this.config.maxRequests);
+		if (this.#config.maxRequests !== undefined && this.#requests >= this.#config.maxRequests) {
+			throw new RequestBudgetExceeded(this.#config.maxRequests);
 		}
 	}
 
@@ -79,10 +84,10 @@ export class NetNutritionClient implements Transport {
 		this.#budgetCheck();
 		this.#requests++;
 		try {
-			return await this.fetchImpl(url, {
+			return await this.#fetchImpl(url, {
 				...init,
 				redirect: 'manual',
-				signal: AbortSignal.timeout(this.config.timeoutMs)
+				signal: AbortSignal.timeout(this.#config.timeoutMs)
 			});
 		} catch (err) {
 			throw new TransportError(`Request to ${url} failed`, err);
@@ -91,7 +96,7 @@ export class NetNutritionClient implements Transport {
 
 	async bootstrap(): Promise<string> {
 		this.#jar.clear();
-		let url = this.config.baseUrl;
+		let url = this.#config.baseUrl;
 
 		for (let hop = 0; hop < MAX_REDIRECTS; hop++) {
 			const res = await this.#limiter.run(() => this.#send(url, { headers: this.#headers() }));
@@ -122,14 +127,14 @@ export class NetNutritionClient implements Transport {
 	): Promise<string> {
 		if (!this.#jar.has(SESSION_COOKIE)) await this.bootstrap();
 
-		const url = `${this.config.baseUrl}/${controller}/${action}`;
+		const url = `${this.#config.baseUrl}/${controller}/${action}`;
 		const entries = Object.entries(body).map(([k, v]) => [k, String(v)] as [string, string]);
 		// A bodyless POST returns HTTP 411 from IIS.
 		const payload = new URLSearchParams(entries.length ? entries : [['_', '1']]).toString();
 
 		let lastError: unknown;
 
-		for (let attempt = 1; attempt <= this.config.maxAttempts; attempt++) {
+		for (let attempt = 1; attempt <= this.#config.maxAttempts; attempt++) {
 			try {
 				const res = await this.#limiter.run(() =>
 					this.#send(url, {
@@ -166,7 +171,7 @@ export class NetNutritionClient implements Transport {
 		}
 
 		throw new TransportError(
-			`POST ${controller}/${action} failed after ${this.config.maxAttempts} attempts`,
+			`POST ${controller}/${action} failed after ${this.#config.maxAttempts} attempts`,
 			lastError
 		);
 	}
@@ -181,7 +186,7 @@ export class NetNutritionClient implements Transport {
 	}
 
 	async #backoff(attempt: number): Promise<void> {
-		if (attempt >= this.config.maxAttempts) return;
+		if (attempt >= this.#config.maxAttempts) return;
 		// 500ms, 1.5s, 4.5s, jittered so parallel workers do not resynchronise.
 		const base = 500 * 3 ** (attempt - 1);
 		const jitter = base * 0.25 * Math.random();
