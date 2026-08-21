@@ -8,13 +8,14 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '../../src/lib/server/db/driver.ts';
+import { addDays } from '../../src/lib/dates.ts';
 import { createMemoryDb } from '../../src/lib/server/db/index.ts';
 import {
 	getDateRange,
 	getMenusForScope,
 	getUnitsServingOn
 } from '../../src/lib/server/queries/menus.ts';
-import { searchItems } from '../../src/lib/server/queries/search.ts';
+import { getFavoritesServedFrom, searchItems } from '../../src/lib/server/queries/search.ts';
 import { getUnitBySlug, getUnitTree, getVenuesOf } from '../../src/lib/server/queries/units.ts';
 import { parseItemPanel } from '../../src/lib/server/scraper/parse/item-panel.ts';
 import { parseHours } from '../../src/lib/server/scraper/parse/hours.ts';
@@ -372,5 +373,81 @@ describe('the allergen filter', () => {
 		const userId = registerUser('mustard');
 		const [hit] = searchItems(db, { query: 'blondie', fromDate: DATE, userId });
 		expect(hit.worstVerdict).toBe('unknown');
+	});
+});
+
+describe('favourites', () => {
+	function registerUser(): number {
+		return db
+			.prepare('INSERT INTO user (email, created_at) VALUES (?, ?)')
+			.run('student@illinois.edu', NOW).lastInsertRowid;
+	}
+
+	function save(userId: number, slug: string): number {
+		const itemId = db.prepare<{ id: number }>('SELECT id FROM item WHERE slug = ?').get(slug)!.id;
+		db.prepare('INSERT INTO favorite (user_id, item_id, created_at) VALUES (?, ?, ?)').run(
+			userId,
+			itemId,
+			NOW
+		);
+		return itemId;
+	}
+
+	it('lists every upcoming serving of a saved dish', () => {
+		const userId = registerUser();
+		save(userId, 'blondie-bars');
+
+		const servings = getFavoritesServedFrom(db, userId, DATE, addDays(DATE, 7));
+		// Four menus were seeded from the same panel, so the dish appears four
+		// times -- and each appearance is listed, because each is a different
+		// venue and meal a user might actually go to.
+		expect(servings).toHaveLength(4);
+		for (const s of servings) {
+			expect(s.name).toBe('Blondie Bars');
+			expect(s.venueName.length).toBeGreaterThan(0);
+			expect(s.hallSlug).toBeTruthy();
+		}
+	});
+
+	it('orders by date then sitting, so today comes first', () => {
+		const userId = registerUser();
+		save(userId, 'blondie-bars');
+
+		const dates = getFavoritesServedFrom(db, userId, DATE, addDays(DATE, 7)).map((s) => s.date);
+		expect([...dates].sort()).toEqual(dates);
+	});
+
+	it('excludes servings outside the window', () => {
+		const userId = registerUser();
+		save(userId, 'blondie-bars');
+		expect(getFavoritesServedFrom(db, userId, addDays(DATE, 1), addDays(DATE, 7))).toEqual([]);
+	});
+
+	it('carries the allergen state, so a saved dish can still be flagged', () => {
+		const userId = registerUser();
+		save(userId, 'blondie-bars');
+		const milk = db.prepare<{ id: number }>("SELECT id FROM allergen WHERE slug = 'milk'").get()!;
+		db.prepare(
+			'INSERT INTO user_allergen (user_id, allergen_id, severity, created_at) VALUES (?, ?, ?, ?)'
+		).run(userId, milk.id, 'avoid', NOW);
+
+		// Blondie Bars carries a Milk trait icon on the grid.
+		const [serving] = getFavoritesServedFrom(db, userId, DATE, addDays(DATE, 7));
+		expect(serving.hasWarning).toBe(true);
+	});
+
+	it('is empty for a user who has saved nothing', () => {
+		expect(getFavoritesServedFrom(db, registerUser(), DATE, addDays(DATE, 7))).toEqual([]);
+	});
+
+	it('survives the dish leaving every menu', () => {
+		// The favourite row stays; it simply has no upcoming serving. The settings
+		// page lists those separately, so a save never looks like it failed.
+		const userId = registerUser();
+		const itemId = save(userId, 'blondie-bars');
+		db.prepare('DELETE FROM menu_item WHERE item_id = ?').run(itemId);
+
+		expect(getFavoritesServedFrom(db, userId, DATE, addDays(DATE, 7))).toEqual([]);
+		expect(db.prepare<{ c: number }>('SELECT COUNT(*) AS c FROM favorite').get()!.c).toBe(1);
 	});
 });
