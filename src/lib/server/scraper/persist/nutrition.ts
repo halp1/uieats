@@ -10,9 +10,9 @@
  * item-name inference live in allergens/match.ts, because they carry lower
  * confidence and need the full alias table with its negative prefixes.
  */
-import { hiddenSourceTerms, matchIngredients } from '../../allergens/match.ts';
+import { hiddenSourceTerms, matchAdvisory, matchIngredients } from '../../allergens/match.ts';
 import type { Db } from '../../db/driver.ts';
-import type { ParsedLabel } from '../parse/nutrition-label.ts';
+import { splitIngredientAdvisory, type ParsedLabel } from '../parse/nutrition-label.ts';
 
 export interface PersistLabelResult {
 	nutritionFactId: number;
@@ -31,6 +31,13 @@ function allergenIdForContains(db: Db, token: string): number | null {
 }
 
 export function persistLabel(db: Db, label: ParsedLabel, now: number): PersistLabelResult {
+	// Split here rather than reading a pre-split field off the label: this is the
+	// single place the distinction matters, and deriving it means a label built by
+	// hand behaves exactly like one that came from the parser.
+	const ingredients = label.ingredientsText
+		? splitIngredientAdvisory(label.ingredientsText)
+		: { body: null, advisory: null };
+
 	return db.transaction(() => {
 		const existing = db
 			.prepare<{ id: number }>('SELECT id FROM nutrition_fact WHERE content_hash = ?')
@@ -46,8 +53,8 @@ export function persistLabel(db: Db, label: ParsedLabel, now: number): PersistLa
 					cholesterol_mg, sodium_mg, potassium_mg, total_carb_g,
 					fiber_g, fiber_is_lt, sugars_g, protein_g,
 					vit_a_dv, vit_c_dv, calcium_dv, iron_dv,
-					ingredients_text, contains_text, first_seen_at, hidden_sources
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+					ingredients_text, contains_text, first_seen_at, hidden_sources, may_contain_text
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 			)
 			.run(
 				label.contentHash,
@@ -75,7 +82,8 @@ export function persistLabel(db: Db, label: ParsedLabel, now: number): PersistLa
 				label.ingredientsText,
 				label.contains.join(', '),
 				now,
-				hiddenSourceTerms(label.ingredientsText).join('|') || null
+				hiddenSourceTerms(ingredients.body).join('|') || null,
+				ingredients.advisory
 			).lastInsertRowid;
 
 		for (const [i, component] of label.components.entries()) {
@@ -103,14 +111,41 @@ export function persistLabel(db: Db, label: ParsedLabel, now: number): PersistLa
 		// content-addressed. The declared ids go in so that a species found
 		// beneath an already-declared group ("Tree Nuts" -> MACADAMIA NUTS) is
 		// rated `likely` rather than treated as a speculative new finding.
-		if (label.ingredientsText) {
-			for (const match of matchIngredients(db, label.ingredientsText, declaredIds)) {
+		//
+		// Matched against ingredientsBODY, not the verbatim text: a trailing
+		// "MAY CONTAIN: Tree Nuts" is not the prose naming an ingredient, and
+		// reading it as one made a roll of flour and water warn for tree nuts.
+		if (ingredients.body) {
+			for (const match of matchIngredients(db, ingredients.body, declaredIds)) {
 				// An allergen upstream already declared needs no weaker duplicate.
 				if (declaredIds.has(match.allergenId)) continue;
 				db.prepare(
 					`INSERT OR IGNORE INTO nutrition_allergen (nutrition_fact_id, allergen_id, source, confidence, evidence)
 					 VALUES (?, ?, 'ingredient', ?, ?)`
 				).run(id, match.allergenId, match.confidence, `ingredients: ${match.evidence}`);
+			}
+		}
+
+		// And the advisory, as its own kind of finding. Upstream stated it, so it
+		// is not a guess -- but it is a statement about possibility, so it is not
+		// a declaration of content either. Recorded even when the same allergen is
+		// already declared elsewhere, because the PRIMARY KEY includes source and
+		// the two say different things.
+		if (ingredients.advisory) {
+			// Upstream's own sentence, verbatim, rather than a context window that can
+			// start mid-word. The advisory is short and self-explanatory, and quoting
+			// it exactly is the audit standard the rest of the app holds to.
+			const advisoryEvidence = ingredients.advisory.replace(/\s+/g, ' ').trim().slice(0, 200);
+			for (const match of matchAdvisory(db, ingredients.advisory)) {
+				// NOT skipped when already declared: "contains milk" and "may also have
+				// picked up milk" are different statements, and the PRIMARY KEY
+				// includes source so both can be stored. verdictFor shows whichever is
+				// stronger.
+				if (declaredIds.has(match.allergenId)) continue;
+				db.prepare(
+					`INSERT OR IGNORE INTO nutrition_allergen (nutrition_fact_id, allergen_id, source, confidence, evidence)
+					 VALUES (?, ?, 'may-contain', 'possible', ?)`
+				).run(id, match.allergenId, advisoryEvidence);
 			}
 		}
 

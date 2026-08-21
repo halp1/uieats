@@ -16,7 +16,7 @@
 import type { ItemAllergenSummary } from '../allergens/verdict.ts';
 import type { Db } from '../db/driver.ts';
 import { mealSort } from '../../dates.ts';
-import { getAllergenSelection, getItemVerdicts, type AllergenSelection } from './allergens.ts';
+import { getAllergenProfile, getItemVerdicts, type AllergenProfile } from './allergens.ts';
 import { placeholders } from './sql.ts';
 import {
 	getHoursFor,
@@ -95,8 +95,8 @@ export interface ScopeParams {
 	/** Restrict to one venue. Omit for the whole hall. */
 	venueId?: number;
 	userId?: number | null;
-	/** Pre-resolved selection, so a page rendering several scopes loads it once. */
-	selection?: AllergenSelection[];
+	/** Pre-resolved profile, so a page rendering several scopes loads it once. */
+	profile?: AllergenProfile;
 	/**
 	 * Show only dishes carrying ALL of these diet trait slugs.
 	 *
@@ -209,8 +209,8 @@ export function getMenusForScope(db: Db, params: ScopeParams): ScopeResult {
 		}
 	}
 
-	const selection = params.selection ?? getAllergenSelection(db, userId);
-	const verdicts = getItemVerdicts(db, selection, menuItemIds);
+	const profile = params.profile ?? getAllergenProfile(db, userId);
+	const verdicts = getItemVerdicts(db, profile, menuItemIds);
 
 	const traitsByItem = new Map<number, TraitView[]>();
 	for (const row of traitRows) {

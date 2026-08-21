@@ -22,7 +22,9 @@ import {
 	type ItemAllergenSummary,
 	type VerdictInput
 } from '../allergens/verdict.ts';
+import { findMatch } from '../allergens/match.ts';
 import type { Db } from '../db/driver.ts';
+import { splitIngredientAdvisory } from '../scraper/parse/nutrition-label.ts';
 import { groupBy, selectByIds } from './sql.ts';
 
 export interface AllergenSelection {
@@ -143,6 +145,58 @@ export function getAllergenSelection(db: Db, userId: number | null): AllergenSel
 	return [...out.values()];
 }
 
+export interface CustomAllergen {
+	/**
+	 * Negative, always. `user_custom_allergen.id` and `allergen.id` are separate
+	 * autoincrements and would otherwise collide, and these two never mean the
+	 * same thing.
+	 */
+	id: number;
+	label: string;
+	terms: string[];
+}
+
+/**
+ * What a user has registered, seeded and custom.
+ *
+ * Bundled so the four places that resolve verdicts cannot pick up one half and
+ * forget the other -- a custom allergen silently not being checked is the worst
+ * possible failure for this feature.
+ */
+export interface AllergenProfile {
+	selection: AllergenSelection[];
+	custom: CustomAllergen[];
+}
+
+export function getCustomAllergens(db: Db, userId: number | null): CustomAllergen[] {
+	if (userId === null) return [];
+	return db
+		.prepare<{ id: number; label: string; terms: string }>(
+			'SELECT id, label, terms FROM user_custom_allergen WHERE user_id = ? ORDER BY label'
+		)
+		.all(userId)
+		.map((row) => ({
+			id: -row.id,
+			label: row.label,
+			terms: row.terms
+				.split('|')
+				.map((t) => t.trim())
+				.filter((t) => t !== '')
+		}));
+}
+
+export function getAllergenProfile(db: Db, userId: number | null): AllergenProfile {
+	return {
+		selection: getAllergenSelection(db, userId),
+		custom: getCustomAllergens(db, userId)
+	};
+}
+
+/** True when nothing is registered, so the browse pages render no chips. */
+export function isEmptyProfile(profile: AllergenProfile): boolean {
+	return profile.selection.length === 0 && profile.custom.length === 0;
+}
+
 interface FactRow {
 	menu_item_id: number;
 	item_id: number;
@@ -150,6 +204,12 @@ interface FactRow {
 	label_fetched_at: number | null;
 	has_ingredients: number;
 	hidden_sources: string | null;
+}
+
+interface FactTextRow {
+	id: number;
+	ingredients_text: string | null;
+	may_contain_text: string | null;
 }
 
 interface EvidenceRow {
@@ -170,11 +230,12 @@ interface EvidenceRow {
  */
 export function getItemVerdicts(
 	db: Db,
-	selection: AllergenSelection[],
+	profile: AllergenProfile,
 	menuItemIds: readonly number[]
 ): Map<number, ItemAllergenSummary> {
+	const { selection, custom } = profile;
 	const summaries = new Map<number, ItemAllergenSummary>();
-	if (selection.length === 0 || menuItemIds.length === 0) return summaries;
+	if (isEmptyProfile(profile) || menuItemIds.length === 0) return summaries;
 
 	const facts = selectByIds<FactRow>(
 		db,
@@ -231,6 +292,75 @@ export function getItemVerdicts(
 
 	const evidenceByItem = groupBy([...traitRows, ...labelRows, ...nameRows], (r) => r.menu_item_id);
 
+	// Custom allergens are matched HERE rather than at scrape time, because a user
+	// can add one at any moment and re-deriving 28,000 stored labels on a settings
+	// save is not an option. The cost is one extra statement, and only when the
+	// user actually has custom allergens -- the ingredient text is loaded once per
+	// distinct label, not once per dish.
+	const textByFact = new Map<number, { body: string | null; advisory: string | null }>();
+	if (custom.length > 0) {
+		const factIds = [
+			...new Set(facts.map((f) => f.nutrition_fact_id).filter((id): id is number => id !== null))
+		];
+		for (const row of selectByIds<FactTextRow>(
+			db,
+			(list) =>
+				`SELECT id, ingredients_text, may_contain_text FROM nutrition_fact WHERE id IN (${list})`,
+			factIds
+		)) {
+			// Split rather than trusting may_contain_text alone: the stored ingredient
+			// text is verbatim and still holds the advisory, and a custom term must
+			// not match an advisory clause as though it named an ingredient -- the
+			// same mistake that made a plain dinner roll warn for tree nuts.
+			const split = row.ingredients_text
+				? splitIngredientAdvisory(row.ingredients_text)
+				: { body: null, advisory: null };
+			textByFact.set(row.id, {
+				body: split.body,
+				advisory: split.advisory ?? row.may_contain_text
+			});
+		}
+	}
+
+	/**
+	 * Evidence for one custom allergen against one label.
+	 *
+	 * Ingredients first, advisory second, so a term appearing in both is reported
+	 * as the stronger finding.
+	 */
+	const customEvidence = (entry: CustomAllergen, factId: number | null): EvidenceItem[] => {
+		if (factId === null) return [];
+		const text = textByFact.get(factId);
+		if (!text) return [];
+
+		for (const term of entry.terms) {
+			const hit = text.body ? findMatch(text.body, term) : null;
+			if (hit) {
+				return [
+					{
+						source: 'ingredient',
+						slug: `custom:${entry.id}`,
+						label: entry.label,
+						text: `ingredients: ${hit}`
+					}
+				];
+			}
+		}
+		for (const term of entry.terms) {
+			if (text.advisory && findMatch(text.advisory, term)) {
+				return [
+					{
+						source: 'may-contain',
+						slug: `custom:${entry.id}`,
+						label: entry.label,
+						text: text.advisory.replace(/\s+/g, ' ').trim().slice(0, 200)
+					}
+				];
+			}
+		}
+		return [];
+	};
+
 	for (const fact of facts) {
 		const rows = evidenceByItem.get(fact.menu_item_id) ?? [];
 		const hiddenSources = fact.hidden_sources ? fact.hidden_sources.split('|') : [];
@@ -251,6 +381,25 @@ export function getItemVerdicts(
 				})),
 			hiddenSources
 		}));
+
+		for (const entry of custom) {
+			inputs.push({
+				// coveredByTraitVocabulary is false and cannot be otherwise: upstream
+				// has no icon for a user's own allergen, so a missing icon says nothing
+				// and an unlabelled dish is `unknown` rather than clear. That guarantee
+				// is why custom allergens live in their own table.
+				allergen: {
+					id: entry.id,
+					slug: `custom:${entry.id}`,
+					label: entry.label,
+					coveredByTraitVocabulary: false
+				},
+				hasLabel: fact.label_fetched_at !== null,
+				hasIngredientText: fact.has_ingredients === 1,
+				evidence: customEvidence(entry, fact.nutrition_fact_id),
+				hiddenSources
+			});
+		}
 
 		summaries.set(fact.menu_item_id, summarizeItem(inputs));
 	}

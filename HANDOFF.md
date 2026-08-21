@@ -88,10 +88,10 @@ printed it five times. The Ingredients section says it once.
   appeared in any capture window. Derived from a real panel by dropping the item
   rows; documented as such in the fixture README. Re-capture for real if one
   turns up, because upstream may render an explicit empty state.
-- **`item.name_checked_at` is a one-shot.** Editing the `name` aliases in
-  `allergen_alias` does not re-run inference over the back catalogue. `UPDATE
-item SET name_checked_at = NULL` is the intended way to force it; there is no
-  CLI flag for that yet.
+- **`item.name_checked_at` is a one-shot** for NAME inference specifically.
+  `scripts/rematch-allergens.ts` re-derives ingredient and advisory findings,
+  but not name ones; `UPDATE item SET name_checked_at = NULL` then a scrape
+  still does that.
 - **Nutrition labels older than 90 days are never re-fetched.** The plan wanted
   a tail re-fetch (formulations change); the backfill queue is still only
   `label_fetched_at IS NULL`.
@@ -177,7 +177,27 @@ relevant code. The first eight are inherited and still true; the rest are new.
     pattern for this in the session history worth rebuilding if numbers ever
     look off: walk every venue, parse each menu, and diff parsed-item-count
     against stored-item-count.
-18. **A `partial` run is a signal, not noise.** All three bugs above showed up
+18. **"MAY CONTAIN" is not "contains", and both are load-bearing.** 75 of 848
+    labels end with a cross-contact advisory. Matching over it made a dinner
+    roll of flour, water, yeast and salt warn for tree nuts -- the OVER-warning
+    direction, which is how users learn to ignore the chips. It gets its own
+    verdict tier rather than being folded into either neighbour, because a
+    severe allergy does need to see it. Two traps in the parsing:
+    paren depth is NOT the discriminator (most advisories are nested inside a
+    component and are genuine there), and "May Contain One or More of the
+    Following" is an ingredient SUBSTITUTION, not an advisory.
+19. **An advisory is matched against the full vocabulary; ingredients are not.**
+    Ingredient matching skips the 18 upstream declares, because its `Contains:`
+    line is authoritative there. That reasoning does not extend to
+    cross-contact, where the advisory line is the only source -- and skipping
+    them made "MAY CONTAIN: Sesame, Soy, Milk, Eggs, Tree Nuts" surface tree
+    nuts alone. `matchAdvisory` exists for exactly this.
+20. **`scripts/rematch-allergens.ts` re-derives findings without re-fetching.**
+    Matching runs at persist time, and `label_fetched_at` stops a re-scrape
+    re-reading a label, so neither a matcher change nor an alias edit reaches
+    the back catalogue on its own. This closes the gap the old handoff noted
+    under `name_checked_at`.
+21. **A `partial` run is a signal, not noise.** All three bugs above showed up
     first as a status or a count that was slightly off, and each was easy to
     read as "flaky upstream". None of them were.
 

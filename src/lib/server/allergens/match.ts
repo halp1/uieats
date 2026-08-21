@@ -38,17 +38,18 @@ interface AliasRow {
 	negative_prefixes: string | null;
 }
 
-function loadAliases(db: Db, kind: MatchSource): AliasRow[] {
+function loadAliases(db: Db, kinds: readonly string[]): AliasRow[] {
+	const list = kinds.map(() => '?').join(', ');
 	return db
 		.prepare<AliasRow>(
 			`SELECT aa.allergen_id, a.slug, aa.alias, aa.match_kind,
 			        aa.requires_word_boundary, aa.negative_prefixes
 			 FROM allergen_alias aa
 			 JOIN allergen a ON a.id = aa.allergen_id
-			 WHERE aa.match_kind = ?
+			 WHERE aa.match_kind IN (${list})
 			 ORDER BY LENGTH(aa.alias) DESC`
 		)
-		.all(kind);
+		.all(...kinds);
 }
 
 /**
@@ -56,11 +57,16 @@ function loadAliases(db: Db, kind: MatchSource): AliasRow[] {
  *
  * The veto is what separates "butter" (milk) from "cocoa butter" (not milk),
  * and "chestnut" (a tree nut) from "water chestnut" (an aquatic vegetable).
+ *
+ * Exported so a user's own custom allergen terms go through exactly the same
+ * guards -- word boundaries, the plural suffix, and the refusal to read
+ * "CASHEW-FREE" as a cashew. A second, laxer matcher for user terms would be a
+ * quiet source of false positives in the one place users cannot inspect.
  */
-function findMatch(
+export function findMatch(
 	haystack: string,
 	alias: string,
-	negativePrefixes: string | null
+	negativePrefixes: string | null = null
 ): string | null {
 	const vetoes = negativePrefixes ? negativePrefixes.split('|').filter(Boolean) : [];
 	const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -97,14 +103,15 @@ function findMatch(
 export function matchIngredients(
 	db: Db,
 	ingredientsText: string,
-	declaredAllergenIds: Set<number> = new Set()
+	declaredAllergenIds: Set<number> = new Set(),
+	kinds: readonly string[] = ['ingredient']
 ): AllergenMatch[] {
 	if (!ingredientsText.trim()) return [];
 
 	const matches: AllergenMatch[] = [];
 	const seen = new Set<number>();
 
-	for (const alias of loadAliases(db, 'ingredient')) {
+	for (const alias of loadAliases(db, kinds)) {
 		if (seen.has(alias.allergen_id)) continue;
 
 		const evidence = findMatch(ingredientsText, alias.alias, alias.negative_prefixes);
@@ -138,6 +145,22 @@ export function matchIngredients(
 	return matches;
 }
 
+/**
+ * Allergens named in a cross-contact advisory.
+ *
+ * Matched against the FULL vocabulary, not just the `ingredient` aliases, and
+ * that difference is the point. Ingredient matching deliberately skips the 18
+ * allergens upstream declares itself, because its "Contains:" line is
+ * authoritative there and re-deriving milk from prose would only add false
+ * positives. But "Contains:" says nothing whatsoever about cross-contact, so for
+ * an advisory the label's own advisory line is the ONLY place the information
+ * exists -- and skipping those 18 meant "MAY CONTAIN: Sesame, Soy, Milk, Eggs,
+ * Tree Nuts" surfaced tree nuts alone and silently dropped the other four.
+ */
+export function matchAdvisory(db: Db, advisoryText: string): AllergenMatch[] {
+	return matchIngredients(db, advisoryText, new Set(), ['ingredient', 'contains']);
+}
+
 /** The weakest signal. May only ever add a warning, never clear one. */
 export function matchItemName(db: Db, itemName: string): AllergenMatch[] {
 	if (!itemName.trim()) return [];
@@ -145,7 +168,7 @@ export function matchItemName(db: Db, itemName: string): AllergenMatch[] {
 	const matches: AllergenMatch[] = [];
 	const seen = new Set<number>();
 
-	for (const alias of loadAliases(db, 'name')) {
+	for (const alias of loadAliases(db, ['name'])) {
 		if (seen.has(alias.allergen_id)) continue;
 		const evidence = findMatch(itemName, alias.alias, alias.negative_prefixes);
 		if (evidence === null) continue;

@@ -42,6 +42,11 @@ function select(...slugs: string[]) {
 	return getAllergenSelection(db, userId);
 }
 
+/** The same, as a profile with no custom allergens -- what most of these test. */
+function profile(...slugs: string[]) {
+	return { selection: select(...slugs), custom: [] };
+}
+
 /** A minimal menu with one dish, so the verdict path can be driven end to end. */
 function seedItem(options: { name?: string; withLabel?: boolean } = {}): number {
 	const unitId = db
@@ -156,14 +161,14 @@ describe('getAllergenSelection', () => {
 describe('getItemVerdicts', () => {
 	it('returns nothing at all when no allergens are registered', () => {
 		const menuItemId = seedItem();
-		expect(getItemVerdicts(db, [], [menuItemId]).size).toBe(0);
+		expect(getItemVerdicts(db, { selection: [], custom: [] }, [menuItemId]).size).toBe(0);
 	});
 
 	it('turns a grid trait into declared evidence with no label present', () => {
 		const menuItemId = seedItem();
 		addTrait(menuItemId, 'Milk');
 
-		const summary = getItemVerdicts(db, select('milk'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('milk'), [menuItemId]).get(menuItemId)!;
 		expect(summary.worst?.verdict).toBe('flagged-declared');
 		expect(summary.worst?.evidence[0].source).toBe('trait');
 	});
@@ -178,7 +183,7 @@ describe('getItemVerdicts', () => {
 			 VALUES (?, ?, 'ingredient', 'likely', 'ingredients: MACADAMIA NUTS')`
 		).run(factId, allergenId('macadamia'));
 
-		const summary = getItemVerdicts(db, select('tree-nuts'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('tree-nuts'), [menuItemId]).get(menuItemId)!;
 		expect(summary.worst?.verdict).toBe('flagged-likely');
 		expect(summary.worst?.chipLabel).toBe('Tree Nuts — Macadamia');
 	});
@@ -192,13 +197,13 @@ describe('getItemVerdicts', () => {
 		).run(factId, allergenId('macadamia'));
 
 		// A cashew allergy is not a macadamia allergy.
-		const summary = getItemVerdicts(db, select('cashew'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('cashew'), [menuItemId]).get(menuItemId)!;
 		expect(summary.hasWarning).toBe(false);
 	});
 
 	it('reports unknown for a non-vocabulary allergen with no label', () => {
 		const menuItemId = seedItem();
-		const summary = getItemVerdicts(db, select('mustard'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('mustard'), [menuItemId]).get(menuItemId)!;
 
 		expect(summary.worst?.verdict).toBe('unknown');
 		expect(summary.allChecked).toBe(false);
@@ -206,7 +211,7 @@ describe('getItemVerdicts', () => {
 
 	it('reports no-declared for a vocabulary allergen with no label', () => {
 		const menuItemId = seedItem();
-		const summary = getItemVerdicts(db, select('milk'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('milk'), [menuItemId]).get(menuItemId)!;
 		expect(summary.worst?.verdict).toBe('no-declared');
 	});
 
@@ -214,7 +219,7 @@ describe('getItemVerdicts', () => {
 		const menuItemId = seedItem();
 		attachFact(menuItemId, { ingredients: null, contains: 'Milk' });
 
-		const summary = getItemVerdicts(db, select('mustard'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('mustard'), [menuItemId]).get(menuItemId)!;
 		expect(summary.worst?.verdict).toBe('unknown');
 	});
 
@@ -222,7 +227,7 @@ describe('getItemVerdicts', () => {
 		const menuItemId = seedItem();
 		attachFact(menuItemId, { ingredients: 'WATER, SALT, SUGAR.' });
 
-		const summary = getItemVerdicts(db, select('mustard'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('mustard'), [menuItemId]).get(menuItemId)!;
 		expect(summary.worst?.verdict).toBe('no-declared');
 		expect(summary.allChecked).toBe(true);
 	});
@@ -231,7 +236,7 @@ describe('getItemVerdicts', () => {
 		const menuItemId = seedItem();
 		attachFact(menuItemId, { ingredients: 'CHICKEN, SPICES.', hidden: 'SPICES' });
 
-		const summary = getItemVerdicts(db, select('mustard'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('mustard'), [menuItemId]).get(menuItemId)!;
 		expect(summary.worst?.advisory).toContain('SPICES');
 	});
 
@@ -245,7 +250,7 @@ describe('getItemVerdicts', () => {
 			 VALUES (?, ?, 'possible', 'item name: Peanut Sauce')`
 		).run(itemId, allergenId('peanuts'));
 
-		const summary = getItemVerdicts(db, select('peanuts'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('peanuts'), [menuItemId]).get(menuItemId)!;
 		expect(summary.worst?.verdict).toBe('flagged-possible');
 	});
 
@@ -254,13 +259,13 @@ describe('getItemVerdicts', () => {
 		addTrait(menuItemId, 'Vegan');
 		addTrait(menuItemId, 'Milk');
 
-		const summary = getItemVerdicts(db, select('milk'), [menuItemId]).get(menuItemId)!;
+		const summary = getItemVerdicts(db, profile('milk'), [menuItemId]).get(menuItemId)!;
 		expect(summary.verdicts).toHaveLength(1);
 		expect(summary.worst?.allergen.slug).toBe('milk');
 	});
 
 	it('handles an empty id list without touching the database', () => {
-		expect(getItemVerdicts(db, select('milk'), []).size).toBe(0);
+		expect(getItemVerdicts(db, profile('milk'), []).size).toBe(0);
 	});
 });
 

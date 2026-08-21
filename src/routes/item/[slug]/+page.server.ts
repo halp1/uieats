@@ -1,7 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getAllergenSelection } from '$lib/server/queries/allergens';
+import { getAllergenProfile } from '$lib/server/queries/allergens';
 import { getItemBySlug, getItemDetail } from '$lib/server/queries/items';
 import { addDays, campusToday, unixNow } from '$lib/dates';
 
@@ -20,7 +20,7 @@ export const load: PageServerLoad = ({ params, locals }) => {
 			// served is useful, a term of history is not.
 			fromDate: addDays(today, -1),
 			userId,
-			selection: getAllergenSelection(db, userId)
+			profile: getAllergenProfile(db, userId)
 		})
 	};
 };

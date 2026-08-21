@@ -45,6 +45,16 @@ export interface ParsedLabel {
 	servingSizeText: string | null;
 	servingGrams: number | null;
 	nutrients: LabelNutrients;
+	/**
+	 * Verbatim, cross-contact advisory included.
+	 *
+	 * Deliberately NOT pre-split. Callers that need the advisory separated call
+	 * `splitIngredientAdvisory` themselves -- a second field here would be a
+	 * field a hand-built label could forget to set, and forgetting it silently
+	 * turns allergen matching back on over the advisory text. That is precisely
+	 * the bug this machinery exists to prevent, so the shape makes it
+	 * unrepresentable rather than merely discouraged.
+	 */
 	ingredientsText: string | null;
 	components: LabelComponent[];
 	/** Exactly as upstream spells them, e.g. ['Corn', 'Eggs', 'Tree Nuts']. */
@@ -125,6 +135,131 @@ function splitTopLevel(text: string): string[] {
 	return parts.map((p) => p.trim()).filter((p) => p !== '');
 }
 
+/**
+ * Phrases that introduce a cross-contact advisory rather than an ingredient.
+ *
+ * Measured across 830 labels: 64 carry a "may contain", and they are NOT all
+ * advisories -- see `splitIngredientAdvisory`.
+ */
+const ADVISORY_PHRASES = [
+	'may also contain',
+	'may contain',
+	'contains traces of',
+	'manufactured in a facility',
+	'manufactured on shared',
+	'produced in a facility',
+	'produced on shared',
+	'processed in a facility',
+	'processed on shared',
+	'packaged in a facility',
+	'made in a facility',
+	'made on shared'
+];
+
+/**
+ * The one phrasing that looks like an advisory and is not.
+ *
+ * "Vegetable Oil (May Contain One or More of the Following: Canola, Sunflower,
+ * Cottonseed)" is a SUBSTITUTION: the oil genuinely is one of those, so every
+ * name in the list is a real possible ingredient and must keep counting as one.
+ */
+const SUBSTITUTION_HINT = 'one or more of the following';
+
+export interface SplitIngredients {
+	/** Ingredients with advisory clauses removed. */
+	body: string | null;
+	/** The advisory clauses, joined, or null. */
+	advisory: string | null;
+}
+
+/**
+ * Separates cross-contact advisories from the ingredient list.
+ *
+ * This exists because "MAY CONTAIN: Sesame, Soy, Milk, Eggs, Tree Nuts." is not
+ * a statement that the dish contains tree nuts. Reading it as one made Assorted
+ * Dinner Rolls -- flour, water, yeast, salt -- warn for tree nuts, and an app
+ * that over-warns teaches people to stop reading its warnings.
+ *
+ * TWO THINGS THE CORPUS FORCED, both learned the hard way:
+ *
+ * 1. Paren depth is NOT the discriminator. Most advisories are nested inside a
+ *    component's own parenthetical and are entirely genuine there:
+ *    `Chopped Peanuts (GFS: Dry Roasted Peanuts. MAY CONTAIN: Tree Nuts.)`.
+ *    Only 13 of the 64 sit at depth zero.
+ * 2. An advisory must not swallow the rest of the list. It ends at the first
+ *    sentence stop OR at the close of the parenthetical it started inside,
+ *    whichever comes first -- otherwise extracting the peanut component's
+ *    advisory would delete every ingredient after it.
+ *
+ * Where the wording is genuinely ambiguous this errs toward calling it an
+ * advisory, which is the cheaper mistake: an advisory still renders as a
+ * warning, just a differently-shaped one, so nothing disappears either way.
+ */
+export function splitIngredientAdvisory(text: string): SplitIngredients {
+	const lower = text.toLowerCase();
+	const spans: [number, number][] = [];
+
+	// Paren depth at each index, so a clause can be bounded by its own bracket.
+	const depths: number[] = [];
+	let depth = 0;
+	for (const ch of text) {
+		if (ch === '(' || ch === '[') depth++;
+		depths.push(depth);
+		if (ch === ')' || ch === ']') depth = Math.max(0, depth - 1);
+	}
+
+	for (let i = 0; i < text.length; i++) {
+		const phrase = ADVISORY_PHRASES.find((p) => lower.startsWith(p, i));
+		if (!phrase) continue;
+		if (i > 0 && /[a-z]/i.test(text[i - 1])) continue;
+
+		const after = lower.slice(i + phrase.length, i + phrase.length + 40);
+		if (after.includes(SUBSTITUTION_HINT)) {
+			i += phrase.length;
+			continue;
+		}
+
+		const openDepth = depths[i];
+		let end = i + phrase.length;
+		while (end < text.length) {
+			const c = text[end];
+			// The bracket that closes the clause's own parenthetical ends it, and is
+			// NOT consumed -- swallowing it would unbalance the body and break the
+			// component split that reads it.
+			if ((c === ')' || c === ']') && depths[end] <= openDepth) break;
+			if (c === '.' && depths[end] <= openDepth) {
+				end++;
+				break;
+			}
+			end++;
+		}
+		spans.push([i, end]);
+		i = end - 1;
+	}
+
+	if (spans.length === 0) return { body: text.trim() || null, advisory: null };
+
+	let body = '';
+	let cursor = 0;
+	const advisories: string[] = [];
+	for (const [from, to] of spans) {
+		body += text.slice(cursor, from);
+		advisories.push(text.slice(from, to).trim());
+		cursor = to;
+	}
+	body += text.slice(cursor);
+
+	return {
+		// Tidy the seam left where a clause was cut out mid-list.
+		body:
+			body
+				.replace(/\s+/g, ' ')
+				.replace(/([,;:])\s*([.)\]])/g, '$2')
+				.trim() || null,
+		advisory: advisories.join(' ') || null
+	};
+}
+
 function parseComponents(ingredients: string): LabelComponent[] {
 	return splitTopLevel(ingredients).map((chunk) => {
 		const open = chunk.indexOf('(');
@@ -181,7 +316,12 @@ export function parseNutritionLabel(html: string): ParsedLabel {
 	}
 
 	const ingredientsText = textOf(root.querySelector('.cbo_nn_LabelIngredients')) || null;
-	const components = ingredientsText ? parseComponents(ingredientsText) : [];
+	// Components are split from the BODY, so an advisory clause does not become a
+	// phantom recipe component on the item page.
+	const split = ingredientsText
+		? splitIngredientAdvisory(ingredientsText)
+		: { body: null, advisory: null };
+	const components = split.body ? parseComponents(split.body) : [];
 
 	const containsText = textOf(root.querySelector('.cbo_nn_LabelAllergens'));
 	const contains = containsText

@@ -26,6 +26,15 @@ export type Verdict =
 	| 'flagged-declared'
 	/** A keyword hit in the ingredient text. */
 	| 'flagged-likely'
+	/**
+	 * Upstream's own cross-contact advisory: "MAY CONTAIN: Tree Nuts".
+	 *
+	 * Deliberately its own tier. It is not a declaration of content -- treating
+	 * it as one made a roll of flour and water warn for tree nuts -- and it is
+	 * not a guess of ours either, because upstream said it outright. Whether to
+	 * act on it depends on how severe the allergy is, which is the user's call.
+	 */
+	| 'flagged-may-contain'
 	/** The item name only; the weakest signal we act on. */
 	| 'flagged-possible'
 	/** Something was read and this allergen was not in it. */
@@ -34,7 +43,7 @@ export type Verdict =
 	| 'unknown';
 
 /** Where a piece of evidence came from, strongest first. */
-export type EvidenceSource = 'trait' | 'contains' | 'ingredient' | 'name';
+export type EvidenceSource = 'trait' | 'contains' | 'ingredient' | 'may-contain' | 'name';
 
 export interface AllergenRef {
 	id: number;
@@ -101,9 +110,10 @@ export const NEVER_SAFE_PATTERN =
 
 /** Evidence strength, and therefore which verdict a hit produces. */
 const SOURCE_RANK: Record<EvidenceSource, number> = {
-	trait: 4,
-	contains: 3,
-	ingredient: 2,
+	trait: 5,
+	contains: 4,
+	ingredient: 3,
+	'may-contain': 2,
 	name: 1
 };
 
@@ -121,12 +131,17 @@ const VERDICT_FOR_SOURCE: Record<EvidenceSource, Verdict> = {
 	trait: 'flagged-declared',
 	contains: 'flagged-declared',
 	ingredient: 'flagged-likely',
+	'may-contain': 'flagged-may-contain',
 	name: 'flagged-possible'
 };
 
 const SEVERITY_RANK: Record<Verdict, number> = {
-	'flagged-declared': 4,
-	'flagged-likely': 3,
+	'flagged-declared': 5,
+	'flagged-likely': 4,
+	// Above `possible` because upstream stated it and we did not infer it; below
+	// `likely` because it is about what might have touched the dish, not what is
+	// in it.
+	'flagged-may-contain': 3,
 	'flagged-possible': 2,
 	// Above no-declared deliberately: an unverified item is the one a user needs
 	// to look at, so it must never sort below one we have actually read.
@@ -155,8 +170,12 @@ export function verdictFor(input: VerdictInput): VerdictResult {
 	if (strongest) {
 		const verdict = VERDICT_FOR_SOURCE[strongest.source];
 		// "Tree Nuts — Macadamia" when the prose resolved a group to a species.
-		const chipLabel =
+		const named =
 			strongest.slug === allergen.slug ? allergen.label : `${allergen.label} — ${strongest.label}`;
+		// An advisory says so in words as well as in form. Someone scanning a menu
+		// should not have to decode a border style to tell "contains" from "may
+		// contain" -- that distinction is the whole point of the tier.
+		const chipLabel = verdict === 'flagged-may-contain' ? `May contain ${named}` : named;
 
 		return {
 			verdict,

@@ -203,6 +203,18 @@
 		border: 2px solid var(--color-ink-full);
 	}
 
+	/*
+	 * Upstream's cross-contact advisory. Dotted rather than dashed or solid: a
+	 * fifth unmistakably different form, for a claim that is neither "contains"
+	 * nor a guess. The chip also says "May contain" in words, because this is the
+	 * one distinction too important to leave to a border style.
+	 */
+	.chip-may-contain {
+		background: var(--color-paper);
+		color: var(--color-ink);
+		border: 2px dotted var(--color-ink-full);
+	}
+
 	/* The dish name only. Dashed, because the claim itself is broken up. */
 	.chip-possible {
 		background: var(--color-paper);
