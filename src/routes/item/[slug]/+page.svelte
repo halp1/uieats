@@ -4,7 +4,7 @@
 	import AllergenChip from '$lib/components/AllergenChip.svelte';
 	import Disclaimer from '$lib/components/Disclaimer.svelte';
 	import NutritionPanel from '$lib/components/NutritionPanel.svelte';
-	import { formatCampusDate } from '$lib/server/time';
+	import { formatCampusDate } from '$lib/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

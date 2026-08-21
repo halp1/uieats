@@ -25,7 +25,7 @@
  * circuit-breaks rather than keep hammering a site that is already unwell.
  */
 import type { Db } from '../../db/driver.ts';
-import { addDays, campusToday, unixNow } from '../../time.ts';
+import { addDays, campusToday, unixNow } from '../../../dates.ts';
 import type { ScraperConfig } from '../config.ts';
 import * as endpoints from '../endpoints.ts';
 import { panelOrThrow, RAW_PANEL, readPanels } from '../panels.ts';

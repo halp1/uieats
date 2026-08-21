@@ -1,6 +1,11 @@
 /**
  * Dates in this app are America/Chicago wall clock, always.
  *
+ * This lives in `$lib` rather than `$lib/server` deliberately. It is pure --
+ * no I/O, no secrets -- and the same formatting has to run in components as
+ * well as loaders. Under `server/` SvelteKit's build guard rejects it, and
+ * rightly: that directory is a boundary, not a junk drawer for shared code.
+ *
  * Upstream publishes menus by local calendar day. A server running in UTC that
  * used `new Date().toISOString()` would roll over to tomorrow's menu at 7pm
  * Central, so "today" must be computed in the dining halls' zone rather than

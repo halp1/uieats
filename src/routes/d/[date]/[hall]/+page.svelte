@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import DateStrip from '$lib/components/DateStrip.svelte';
+	import DietFilter from '$lib/components/DietFilter.svelte';
 	import VenueMenu from '$lib/components/VenueMenu.svelte';
-	import { formatCampusDate } from '$lib/server/time';
+	import { formatCampusDate } from '$lib/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -23,8 +24,24 @@
 		data.scope.venues.filter((v) => !serving.some((s) => s.venue.id === v.venue.id))
 	);
 
+	/**
+	 * Keeps whatever else is in the query string, so a diet filter survives
+	 * switching meal or day.
+	 *
+	 * Built from URLSearchParams rather than a cloned URL: nothing here needs an
+	 * origin, and a mutable URL derived from `page.url` is a reactivity trap.
+	 */
+	function withParams(path: string, overrides: Record<string, string>): string {
+		// A throwaway string builder inside a pure function, not reactive state.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
+		const params = new URLSearchParams(page.url.search);
+		for (const [key, value] of Object.entries(overrides)) params.set(key, value);
+		const query = params.toString();
+		return query ? `${path}?${query}` : path;
+	}
+
 	function mealHref(m: string): string {
-		return `/d/${data.date}/${data.scope.root.slug}?meal=${encodeURIComponent(m)}`;
+		return withParams(`/d/${data.date}/${data.scope.root.slug}`, { meal: m });
 	}
 
 	// Upstream publishes two different kinds of thing under one field: real
@@ -47,9 +64,7 @@
 	date={data.date}
 	today={data.today}
 	href={(d) =>
-		activeMeal
-			? `/d/${d}/${data.scope.root.slug}?meal=${encodeURIComponent(activeMeal)}`
-			: `/d/${d}/${data.scope.root.slug}`}
+		withParams(`/d/${d}/${data.scope.root.slug}`, activeMeal ? { meal: activeMeal } : {})}
 />
 
 <nav class="mt-4 mb-1 text-xs">
@@ -100,6 +115,8 @@
 	</div>
 {/if}
 
+<DietFilter tags={data.dietTags} active={data.diets} url={page.url} />
+
 <div class="mt-8">
 	{#if data.scope.itemCount === 0}
 		<div class="border-2 border-ink p-4">
@@ -115,6 +132,7 @@
 		<VenueMenu
 			venue={venueView}
 			mealFilter={activeMeal}
+			filtered={data.diets.length > 0}
 			headingHref={data.scope.venues.length > 1
 				? `/d/${data.date}/${data.scope.root.slug}/${venueView.venue.slug}`
 				: null}

@@ -1,0 +1,22 @@
+# 04:15 America/Chicago, daily.
+#
+# After upstream's overnight publish and before breakfast service, so the
+# soonest meals have labels by the time anyone looks. The timezone is pinned to
+# campus rather than the host's: menus are published against local calendar
+# days, and a UTC host would drift across the two DST transitions.
+[Unit]
+Description=uieats nightly menu scrape
+Requires=uieats-scrape.service
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 America/Chicago
+# Spread the start a little, so this is not one more thing hitting a university
+# server at exactly 04:15.
+RandomizedDelaySec=15m
+# If the machine was asleep or down at 04:15, run once on the next boot rather
+# than skipping the day.
+Persistent=true
+Unit=uieats-scrape.service
+
+[Install]
+WantedBy=timers.target

@@ -10,6 +10,11 @@ import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { getDb } from '$lib/server/db';
 import { SESSION_COOKIE, resolveSession } from '$lib/server/auth/session';
+import { logStartupHealth } from '$lib/server/health';
+
+// Once, at boot. Stale menu data is the failure mode a user cannot detect: the
+// pages render perfectly, they are just describing last Tuesday.
+logStartupHealth(getDb());
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const token = event.cookies.get(SESSION_COOKIE);

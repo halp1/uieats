@@ -13,7 +13,7 @@
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Db } from '../db/driver.ts';
-import { unixNow } from '../time.ts';
+import { unixNow } from '../../dates.ts';
 
 export const SESSION_COOKIE = 'uieats_session';
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;

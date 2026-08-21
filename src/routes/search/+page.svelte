@@ -3,7 +3,7 @@
 	import Search from '@lucide/svelte/icons/search';
 	import Star from '@lucide/svelte/icons/star';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-	import { formatCampusDate } from '$lib/server/time';
+	import { formatCampusDate } from '$lib/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

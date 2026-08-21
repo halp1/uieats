@@ -11,14 +11,15 @@
 <script lang="ts">
 	import CircleDashed from '@lucide/svelte/icons/circle-dashed';
 	import type { MealView, VenueView } from '$lib/server/queries/menus';
-	import { formatClock } from '$lib/server/time';
+	import { formatClock } from '$lib/dates';
 	import ItemRow from './ItemRow.svelte';
 
 	let {
 		venue,
 		mealFilter = null,
 		headingHref = null,
-		showHeading = true
+		showHeading = true,
+		filtered = false
 	}: {
 		venue: VenueView;
 		/** Show only this meal. The hall view's tab bar drives it. */
@@ -27,6 +28,12 @@
 		headingHref?: string | null;
 		/** The venue page already has the name as its h1; do not repeat it. */
 		showHeading?: boolean;
+		/**
+		 * True when a diet filter is narrowing the list. It changes what an empty
+		 * meal MEANS -- "not entered yet" versus "nothing here matches" -- and
+		 * saying the wrong one sends a user looking for a menu that is right there.
+		 */
+		filtered?: boolean;
 	} = $props();
 
 	const meals = $derived(
@@ -120,10 +127,14 @@
 			</h3>
 
 			{#if meal.categories.length === 0}
-				<!-- A published menu with nothing on it is a real upstream state, not
-				     an error: the meal exists, the dishes are not entered yet. -->
 				<p class="mt-2 text-sm text-ink-faint">
-					This meal is published but has no dishes listed yet.
+					{#if filtered}
+						Nothing on this menu matches the diet filters.
+					{:else}
+						<!-- A published menu with nothing on it is a real upstream state,
+						     not an error: the meal exists, the dishes are not entered yet. -->
+						This meal is published but has no dishes listed yet.
+					{/if}
 				</p>
 			{/if}
 

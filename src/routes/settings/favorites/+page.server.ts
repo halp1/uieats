@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getAllergenSelection } from '$lib/server/queries/allergens';
 import { getFavoritesServedFrom } from '$lib/server/queries/search';
-import { addDays, campusToday } from '$lib/server/time';
+import { addDays, campusToday } from '$lib/dates';
 
 export const load: PageServerLoad = ({ locals }) => {
 	if (!locals.user) redirect(303, '/auth/login?next=/settings/favorites');

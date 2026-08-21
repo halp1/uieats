@@ -23,18 +23,16 @@ hand. Do not run capture in CI.
 | `itempanel-1440351.json`           | same, `menuOid=1440351`                              | A second date at the same venue. Contains `White Chocolate Macadamia Nut Cookie`, declared only as `Tree Nuts`                                                                        |
 | `label-122098028.html`             | `NutritionDetail/ShowItemNutritionLabel`             | Raw HTML despite the JSON-looking siblings. Carries the `NA` trans-fat trap, an empty Vitamin A cell, `< 1g` fibre, six sub-recipe components, and the authoritative `Contains:` line |
 
-## Still to capture
+## Synthesized, not captured
 
-Upstream was serving its "NetNutrition Start-up Error" page when these were
-last refreshed, so four fixtures are outstanding. Tests that need them are not
-yet written.
+| File                   | Provenance                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `itempanel-empty.json` | Derived from `itempanel-1440348.json` by keeping the header, the table's `<thead>` and the trailing nav markup verbatim, and dropping the item rows. No zero-item menu appeared in any capture window; every byte here is still upstream's, only the date and venue strings in the header were changed. |
 
-| File                             | How to get it                                | Covers                                                                                                                      |
-| -------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `select-unit-32.standalone.json` | `Unit/SelectUnitFromUnitsList` `unitOid=32`  | The **standalone** branch: a unit with no children returns `menuPanel` directly. Easy to forget, and half the units take it |
-| `hours-unit-5.html`              | `Unit/GetHoursOfOperationMarkup` `unitOid=5` | Weekly hours grid, raw HTML                                                                                                 |
-| `itempanel-empty.json`           | any menu with zero items                     | Empty-state path                                                                                                            |
-| `session-expired.txt`            | any POST with a junk `ASP.NET_SessionId`     | Session-recovery path in the transport client                                                                               |
+Re-capture it for real if a genuinely empty menu ever turns up during term --
+upstream may render an explicit empty state rather than a bare table, and this
+fixture asserts only that the parser survives the shape it can currently be
+shown.
 
 ## Upstream quirks these fixtures encode
 

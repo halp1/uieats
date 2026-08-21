@@ -19,7 +19,7 @@
  */
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import type { Db } from '../db/driver.ts';
-import { unixNow } from '../time.ts';
+import { unixNow } from '../../dates.ts';
 import { isEligibleEmail, normalizeEmail } from './email.ts';
 
 export const CODE_TTL_SECONDS = 10 * 60;

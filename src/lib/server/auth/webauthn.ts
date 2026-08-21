@@ -26,7 +26,7 @@ import {
 } from '@simplewebauthn/server';
 import { randomBytes } from 'node:crypto';
 import type { Db } from '../db/driver.ts';
-import { unixNow } from '../time.ts';
+import { unixNow } from '../../dates.ts';
 
 const CHALLENGE_TTL_SECONDS = 5 * 60;
 export const RP_NAME = 'uieats';

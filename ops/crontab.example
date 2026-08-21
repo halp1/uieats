@@ -1,0 +1,15 @@
+# Cron alternative to the systemd timer, for hosts without systemd.
+#
+# CRON_TZ is essential: menus are published against America/Chicago calendar
+# days, and a UTC host firing at 04:15 UTC would run at 22:15 or 23:15 the
+# previous evening -- before upstream has published anything.
+CRON_TZ=America/Chicago
+
+# One nightly run, after upstream's overnight publish and before breakfast
+# service. It does menus, nutrition labels and hours: hours cost 36 requests
+# against ~2,300 for the menus, so there is nothing to gain from splitting them
+# out. `--no-hours` exists if you ever want to.
+#
+# Two concurrent runs are safe without flock: the second fails to claim the
+# single-row scrape_lock and exits 0 quietly.
+15 4 * * * cd /srv/uieats && /usr/bin/node scripts/scrape.ts >> /var/log/uieats/scrape.log 2>&1

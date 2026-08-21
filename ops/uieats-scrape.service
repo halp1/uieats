@@ -1,0 +1,43 @@
+# One-shot scrape. Paired with uieats-scrape.timer; not enabled on its own.
+#
+# Type=oneshot rather than a long-running service: the scrape has an end, and a
+# timer that fires while the last run is still going is handled by the
+# single-row scrape_lock in scripts/scrape.ts (the second run exits 0 quietly).
+[Unit]
+Description=uieats menu scrape
+Documentation=https://github.com/-/uieats
+# The scrape is the only writer, but ordering after the web service means a
+# reboot brings the site up before spending 90 minutes on a first full crawl.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=uieats
+Group=uieats
+WorkingDirectory=/srv/uieats
+# `node` directly: Node 26 strips the TypeScript, so there is no build step.
+ExecStart=/usr/bin/node scripts/scrape.ts
+EnvironmentFile=/etc/uieats/env
+
+# A full first run is ~90 minutes at the 6 req/s politeness cap. Steady state is
+# ~10 minutes because detailOid is a stable cache key. The timeout is generous
+# rather than tight: killing a run half way is safe (the backfill queue is
+# label_fetched_at IS NULL, so it resumes) but pointless.
+TimeoutStartSec=3h
+
+# The data directory must be on local disk. WAL over NFS is unsafe, and the
+# scraper writes while the web process reads.
+ReadWritePaths=/srv/uieats/data
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+
+# Never restart on failure. Upstream being down is the common cause, and
+# retrying into an unhealthy university server is exactly what the circuit
+# breaker exists to prevent. The next timer firing is soon enough.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
