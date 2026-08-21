@@ -19,7 +19,9 @@
 		"scrape": "node scripts/scrape.ts",
 		"db:migrate": "node scripts/migrate.ts",
 		"db:reset": "node scripts/db-reset.ts",
-		"db:seed-demo": "node scripts/seed-demo.ts"
+		"db:seed-demo": "node scripts/seed-demo.ts",
+		"db:rematch": "node scripts/rematch-allergens.ts",
+		"icons": "node scripts/make-icons.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

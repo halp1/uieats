@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>No connection — uieats</title>
+		<!--
+			Self-contained on purpose. The app's stylesheet has a hashed filename that
+			changes every deploy, and a page whose whole job is to work when nothing
+			loads should not depend on something else loading.
+		-->
+		<style>
+			body {
+				margin: 0;
+				padding: 2rem 1rem;
+				background: #fff;
+				color: #171717;
+				font-family: 'Archivo', ui-sans-serif, system-ui, -apple-system, sans-serif;
+				letter-spacing: -0.011em;
+			}
+			main {
+				max-width: 32rem;
+				margin: 0 auto;
+			}
+			h1 {
+				margin: 0;
+				font-size: 1.875rem;
+				font-weight: 800;
+				letter-spacing: -0.03em;
+				border-bottom: 8px solid #000;
+				padding-bottom: 0.5rem;
+			}
+			p {
+				font-size: 0.875rem;
+				line-height: 1.6;
+				color: #525252;
+			}
+			strong {
+				color: #171717;
+			}
+			button {
+				margin-top: 1.5rem;
+				padding: 0.625rem 1.25rem;
+				border: 0;
+				background: #000;
+				color: #fff;
+				font: inherit;
+				font-size: 0.875rem;
+				font-weight: 700;
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>No connection</h1>
+			<p>
+				uieats needs the network to load a menu, and deliberately keeps none of them on your
+				device.
+			</p>
+			<p>
+				<strong>That is not an oversight.</strong> A menu cached on your phone is a menu that may
+				have changed — a recipe swapped, a supplier substituted, an allergen added — and this app
+				would have no way to tell you. Showing you allergen flags from a stale copy is the one
+				thing it must never do, so it shows you nothing instead.
+			</p>
+			<button type="button" onclick="location.reload()">Try again</button>
+		</main>
+	</body>
+</html>

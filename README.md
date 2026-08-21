@@ -94,6 +94,9 @@ bun run test / test:watch / test:cov      # coverage gate: 90% lines on
                                           # parse/** and allergens/**
 bun run test:live                         # six real requests, opt-in
 bun run db:migrate / db:reset / db:seed-demo
+bun run db:rematch                        # re-derive allergens from stored
+                                          # labels, no network
+bun run icons                             # regenerate the app icon
 
 node scripts/scrape.ts                    # full crawl (~90 min first run)
 node scripts/scrape.ts --unit=1 --days=1 --label-budget=25    # tight loop
@@ -101,6 +104,22 @@ node scripts/scrape.ts --no-labels --no-hours
 node scripts/capture-fixtures.ts          # re-capture upstream; never in CI
 node scripts/write-fixture-manifest.ts    # after re-capturing
 ```
+
+## Installable
+
+There is a manifest, a service worker and an icon, so it installs to a phone
+home screen and opens without browser chrome.
+
+The service worker caches **only** the hashed build assets. Pages and menu data
+are network-only, and offline gets a page explaining that rather than a menu.
+That is deliberate: a cached menu is a set of allergen claims the app can no
+longer stand behind, and in standalone display there is no address bar to hint
+that what you are reading is not live. `src/service-worker.ts` has the full
+reasoning.
+
+`bun run icons` regenerates the icon. It is a miniature Nutrition Facts panel —
+the design system in a 32-pixel box — drawn as rectangles and encoded to PNG by
+hand, so there is no image dependency in the build.
 
 ## Deploying
 

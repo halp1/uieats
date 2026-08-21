@@ -4,6 +4,28 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+
+		<!-- Installable. See src/service-worker.ts for why nothing is cached but assets. -->
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<meta name="theme-color" content="#ffffff" />
+		<meta
+			name="description"
+			content="University of Illinois dining menus, with every dish flagged against the allergens you register."
+		/>
+
+		<!--
+			The SVG is what a browser tab uses at any size; the 32px PNG is the
+			fallback for anything that will not take one.
+		-->
+		<link rel="icon" href="/icon.svg" type="image/svg+xml" />
+		<link rel="alternate icon" href="/favicon-32.png" sizes="32x32" />
+		<!-- iOS ignores the manifest for the home screen and needs this. -->
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-title" content="uieats" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<!-- Black-on-white status bar, so it matches the page rather than floating above it. -->
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

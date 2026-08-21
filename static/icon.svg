@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+	<title>uieats</title>
+	<rect width="100" height="100" fill="#000"/>
+	<rect x="16.0" y="21.0" width="50.0" height="7.5" fill="#fff"/>
+	<rect x="16.0" y="33.5" width="68.0" height="7.5" fill="#fff"/>
+	<rect x="16.0" y="49.0" width="34.0" height="5.0" fill="#fff"/>
+	<rect x="72.0" y="49.0" width="12.0" height="5.0" fill="#fff"/>
+	<rect x="16.0" y="61.5" width="26.0" height="5.0" fill="#fff"/>
+	<rect x="72.0" y="61.5" width="12.0" height="5.0" fill="#fff"/>
+	<rect x="16.0" y="74.0" width="30.0" height="5.0" fill="#fff"/>
+	<rect x="72.0" y="74.0" width="12.0" height="5.0" fill="#fff"/>
+</svg>

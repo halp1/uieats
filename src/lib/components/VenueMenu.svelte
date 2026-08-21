@@ -19,7 +19,8 @@
 		mealFilter = null,
 		headingHref = null,
 		showHeading = true,
-		filtered = false
+		filtered = false,
+		nowServing = null
 	}: {
 		venue: VenueView;
 		/** Show only this meal. The hall view's tab bar drives it. */
@@ -34,6 +35,13 @@
 		 * saying the wrong one sends a user looking for a menu that is right there.
 		 */
 		filtered?: boolean;
+		/**
+		 * The sitting being served at this moment, or null on any day but today.
+		 * Marked rather than filtered to: the venue view deliberately shows the
+		 * whole day, and hiding the rest of it to make a point about the clock
+		 * would be a worse trade.
+		 */
+		nowServing?: string | null;
 	} = $props();
 
 	const meals = $derived(
@@ -119,7 +127,16 @@
 		{@const hoisted = hoistedUnknowns(meal)}
 		<div class="mt-5">
 			<h3 class="rule-group flex items-baseline justify-between pb-0.5">
-				<span class="text-base font-bold">{meal.meal}</span>
+				<span class="text-base font-bold">
+					{meal.meal}
+					{#if meal.meal === nowServing}
+						<span
+							class="ml-1.5 bg-ink-full px-1.5 py-0.5 align-middle text-[0.5625rem] font-bold tracking-[0.12em] text-paper"
+						>
+							NOW
+						</span>
+					{/if}
+				</span>
 				<span class="tabular font-mono text-[0.6875rem] font-normal text-ink-faint">
 					{meal.itemCount}
 					{meal.itemCount === 1 ? 'item' : 'items'}

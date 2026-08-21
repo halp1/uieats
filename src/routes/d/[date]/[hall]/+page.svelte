@@ -3,7 +3,7 @@
 	import DateStrip from '$lib/components/DateStrip.svelte';
 	import DietFilter from '$lib/components/DietFilter.svelte';
 	import VenueMenu from '$lib/components/VenueMenu.svelte';
-	import { formatCampusDate } from '$lib/dates';
+	import { currentMeal, defaultMeal, formatCampusDate } from '$lib/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -11,8 +11,13 @@
 	// The meal filter is a URL param, not component state: it survives a reload,
 	// it can be linked to ("Ike at dinner"), and it costs no client JavaScript.
 	const meal = $derived(page.url.searchParams.get('meal'));
+	// With no ?meal= in the URL, open on the sitting being served now -- see
+	// defaultMeal. An explicit choice always wins, so a shared link still lands
+	// where the sender meant.
 	const activeMeal = $derived(
-		meal !== null && data.scope.meals.includes(meal) ? meal : (data.scope.meals[0] ?? null)
+		meal !== null && data.scope.meals.includes(meal)
+			? meal
+			: defaultMeal(data.scope.meals, { date: data.date, today: data.today })
 	);
 
 	const serving = $derived(
@@ -54,6 +59,7 @@
 		data.scope.meals.filter((m) => sittings.some((s) => s.meal === m && s.mealSort < 99))
 	);
 	const stations = $derived(data.scope.meals.filter((m) => !orderedMeals.includes(m)));
+	const nowServing = $derived(data.date === data.today ? currentMeal() : null);
 </script>
 
 <svelte:head>
@@ -93,6 +99,10 @@
 						{m === activeMeal ? 'bg-ink-full text-paper' : 'text-ink-muted hover:bg-paper-sunk'}"
 				>
 					{m}
+					{#if m === nowServing}
+						<!-- Says why the page opened here, rather than leaving it a mystery. -->
+						<span class="ml-1 font-normal opacity-60">now</span>
+					{/if}
 				</a>
 			{/each}
 		</div>
