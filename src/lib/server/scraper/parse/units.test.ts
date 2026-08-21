@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseChildUnits, parseUnits } from './units.ts';
 import { fixturePanel, loadFixture } from '../../../../../tests/helpers/fixtures.ts';
+import { readPanels } from '../panels.ts';
+import { parseMenuList } from './menu-list.ts';
 
 describe('parseUnits', () => {
 	const units = parseUnits(loadFixture('landing.html'));
@@ -67,5 +69,27 @@ describe('parseChildUnits', () => {
 
 	it('does not mistake the back button for a venue', () => {
 		expect(children.some((c) => /back/i.test(c.name))).toBe(false);
+	});
+});
+
+describe('the standalone-unit branch', () => {
+	it('returns a menu list directly, with no childUnitsPanel to parse', () => {
+		// Field of Greens (oid 32) has no children, so SelectUnitFromUnitsList
+		// answers with menuPanel instead of childUnitsPanel. Eight of the twelve
+		// top-level units take this branch, and a crawler that only handles halls
+		// silently drops all of them.
+		const panels = readPanels(loadFixture('select-unit-32.standalone.json'));
+		expect(panels.has('childUnitsPanel')).toBe(false);
+		expect(panels.has('menuPanel')).toBe(true);
+
+		// And the panel it returns is a normal menu list.
+		const menus = parseMenuList(panels.get('menuPanel')!);
+		expect(menus.length).toBeGreaterThan(0);
+		expect(menus[0].serviceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+	});
+
+	it('yields no child units if a caller mistakenly parses it as a hall', () => {
+		const panels = readPanels(loadFixture('select-unit-32.standalone.json'));
+		expect(parseChildUnits(panels.get('menuPanel')!)).toEqual([]);
 	});
 });
