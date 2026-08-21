@@ -326,13 +326,111 @@ describe('runScrape nutrition backfill', () => {
 		});
 		expect(second.labelsFetched).toBeGreaterThan(0);
 
+		// Everything upstream will still answer for is now fetched. The queue is
+		// scoped to today onwards on purpose -- see the next test.
 		expect(
 			db
 				.prepare<{ c: number }>(
-					'SELECT COUNT(*) AS c FROM menu_item WHERE label_fetched_at IS NULL'
+					`SELECT COUNT(*) AS c FROM menu_item mi JOIN menu m ON m.id = mi.menu_id
+					 WHERE mi.label_fetched_at IS NULL AND m.service_date >= ?`
 				)
-				.get()?.c
+				.get(TODAY)?.c
 		).toBe(0);
+	});
+
+	it('does not chase labels for dates upstream has already retired', async () => {
+		// Measured: upstream drops past days from its menu list, and the label
+		// endpoint answers 0 bytes for a menu it no longer offers. Those items sort
+		// FIRST in a service_date ASC queue, so leaving them in means every run
+		// begins by failing on work that can never succeed -- and as more dates
+		// retire, the error rate climbs toward the circuit breaker that would abort
+		// the real work behind them.
+		const transport = new FakeTransport({ routes: ROUTES });
+		const summary = await runScrape(db, transport, CONFIG, {
+			onlyUnits: [1],
+			today: TODAY,
+			daysAhead: 1,
+			now
+		});
+
+		expect(summary.errorCount).toBe(0);
+
+		const past = db
+			.prepare<{ c: number }>(
+				`SELECT COUNT(*) AS c FROM menu_item mi JOIN menu m ON m.id = mi.menu_id
+				 WHERE m.service_date < ?`
+			)
+			.get(TODAY)!.c;
+		expect(past, 'the fixture needs a past-dated menu for this to mean anything').toBeGreaterThan(
+			0
+		);
+
+		// Those items are still stored -- yesterday's menu is real history, and the
+		// item page shows it -- they are simply never queued for a label.
+		expect(
+			db
+				.prepare<{ c: number }>(
+					`SELECT COUNT(*) AS c FROM menu_item mi JOIN menu m ON m.id = mi.menu_id
+					 WHERE mi.label_fetched_at IS NOT NULL AND m.service_date < ?`
+				)
+				.get(TODAY)!.c
+		).toBe(0);
+	});
+});
+
+describe('retiring menus that fell out of the window', () => {
+	it('removes menus older than the window and nothing newer', async () => {
+		// Seed a menu well in the past, as an earlier run with a wider window
+		// would have left behind.
+		await runScrape(db, new FakeTransport({ routes: ROUTES }), CONFIG, {
+			onlyUnits: [1],
+			today: TODAY,
+			daysAhead: 1,
+			now,
+			skipLabels: true
+		});
+		const unitId = db.prepare<{ id: number }>('SELECT id FROM unit LIMIT 1').get()!.id;
+		db.prepare(
+			`INSERT INTO menu (unit_id, service_date, meal, meal_sort, nn_oid, first_seen_at)
+			 VALUES (?, '2026-07-01', 'Lunch', 30, 999999, ?)`
+		).run(unitId, 1);
+
+		const before = db.prepare<{ c: number }>('SELECT COUNT(*) AS c FROM menu').get()!.c;
+		await runScrape(db, new FakeTransport({ routes: ROUTES }), CONFIG, {
+			onlyUnits: [1],
+			today: TODAY,
+			daysAhead: 1,
+			now,
+			skipLabels: true
+		});
+		const after = db.prepare<{ c: number }>('SELECT COUNT(*) AS c FROM menu').get()!.c;
+
+		expect(before - after).toBe(1);
+		expect(
+			db.prepare<{ c: number }>('SELECT COUNT(*) AS c FROM menu WHERE nn_oid = 999999').get()!.c
+		).toBe(0);
+	});
+
+	it('leaves the future alone, so a narrow --days run cannot delete it', async () => {
+		// The trap this guards: pruning on the window's END would let
+		// `--days=0` silently wipe the three weeks a full run had collected.
+		await runScrape(db, new FakeTransport({ routes: ROUTES }), CONFIG, {
+			onlyUnits: [1],
+			today: TODAY,
+			daysAhead: 21,
+			now,
+			skipLabels: true
+		});
+		const wide = db.prepare<{ c: number }>('SELECT COUNT(*) AS c FROM menu').get()!.c;
+
+		await runScrape(db, new FakeTransport({ routes: ROUTES }), CONFIG, {
+			onlyUnits: [1],
+			today: TODAY,
+			daysAhead: 0,
+			now,
+			skipLabels: true
+		});
+		expect(db.prepare<{ c: number }>('SELECT COUNT(*) AS c FROM menu').get()!.c).toBe(wide);
 	});
 });
 

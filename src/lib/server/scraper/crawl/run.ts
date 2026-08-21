@@ -35,7 +35,7 @@ import { parseMenuList, type ParsedMenuRef } from '../parse/menu-list.ts';
 import { parseNutritionLabel } from '../parse/nutrition-label.ts';
 import { parseChildUnits, parseUnits } from '../parse/units.ts';
 import { persistHours } from '../persist/hours.ts';
-import { persistMenu } from '../persist/menus.ts';
+import { persistMenu, pruneMenusBefore } from '../persist/menus.ts';
 import {
 	attachLabelToMenuItem,
 	pendingLabels,
@@ -230,6 +230,15 @@ export async function runScrape(
 		summary.menusSeen = work.length;
 		log(`menus in ${from}..${to}: ${work.length}`);
 
+		// Upstream retires past days, and nothing else removes them: the sweep in
+		// persistMenu is scoped to menus this run actually parsed, so a menu that
+		// has fallen out of the window is never touched again. Its items then sit
+		// in the label queue forever, unfetchable, sorting to the front. Only
+		// dates strictly before the window start are removed, so a narrower
+		// --days run cannot delete future menus it merely did not request.
+		const pruned = pruneMenusBefore(db, from);
+		if (pruned > 0) log(`  retired menus removed: ${pruned}`);
+
 		// ---- Phase C: menu items --------------------------------------------
 		//
 		// Several venues share a menu oid: "Build Your Own" is published under
@@ -286,7 +295,9 @@ export async function runScrape(
 		// ---- Phase D: nutrition labels ---------------------------------------
 		if (!options.skipLabels) {
 			const budget = options.labelBudget ?? Number.MAX_SAFE_INTEGER;
-			const queue = pendingLabels(db, Math.min(budget, 100_000));
+			// `today`, not `from`: upstream had already retired yesterday by the time
+			// this was measured, so a label for it can never be fetched.
+			const queue = pendingLabels(db, Math.min(budget, 100_000), today);
 			log(`labels pending: ${queue.length}`);
 
 			// The label endpoint is SESSION-STATEFUL: it answers only for the menu

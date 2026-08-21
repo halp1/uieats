@@ -1,0 +1,13 @@
+-- Drop v_pending_labels.
+--
+-- It was never queried: `persist/nutrition.ts` has always had its own statement,
+-- and the two have now diverged in a way that matters. The real queue excludes
+-- menus for dates upstream has retired, because the label endpoint answers 0
+-- bytes for those; the view did not.
+--
+-- Teaching the view the same rule would mean writing "today" in SQL, and
+-- SQLite's date('now') is UTC. Every date in this app is America/Chicago wall
+-- clock -- a UTC "today" would drop the current day's queue for five hours every
+-- evening. That belongs in TypeScript where the zone is handled, so the view
+-- goes rather than being fixed.
+DROP VIEW v_pending_labels;

@@ -147,9 +147,16 @@ export interface PendingLabel {
  * The backfill queue: instances with no label yet, soonest service date first
  * so the meals a user is about to look at get facts before distant ones.
  */
-export function pendingLabels(db: Db, limit: number): PendingLabel[] {
+export function pendingLabels(db: Db, limit: number, notBefore: string): PendingLabel[] {
 	// Ordered by menu so the caller can select each menu once and then fetch all
 	// of its labels; the endpoint only answers for the currently-selected menu.
+	//
+	// `notBefore` excludes menus upstream has already retired. It answers 0 bytes
+	// for those (measured), and because this queue is ordered by service_date ASC
+	// they would sort to the very front -- so every run would begin by failing on
+	// work that can never succeed. Pruning removes most of them; this makes the
+	// queue correct even in the window between a date retiring and the next
+	// prune, and for anything a narrower run left behind.
 	return db
 		.prepare<PendingLabel>(
 			`SELECT mi.id            AS menu_item_id,
@@ -162,11 +169,11 @@ export function pendingLabels(db: Db, limit: number): PendingLabel[] {
 			 FROM menu_item mi
 			 JOIN menu m ON m.id = mi.menu_id
 			 JOIN unit u ON u.id = m.unit_id
-			 WHERE mi.label_fetched_at IS NULL
+			 WHERE mi.label_fetched_at IS NULL AND m.service_date >= ?
 			 ORDER BY m.service_date ASC, m.nn_oid ASC, mi.sort ASC
 			 LIMIT ?`
 		)
-		.all(limit);
+		.all(notBefore, limit);
 }
 
 /**
