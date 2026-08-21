@@ -1,3 +1,6 @@
-# allow crawling everything by default
+# uieats re-hosts University of Illinois dining data for students to use.
+# Upstream serves X-Robots-Tag: noindex,nofollow on the same content, and this
+# is a utility rather than an SEO mirror of university pages, so nothing here
+# is offered for indexing.
 User-agent: *
-Disallow:
+Disallow: /

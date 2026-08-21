@@ -16,6 +16,9 @@
  *   D  labels     -- the bulk of the work. Resumable by construction: the
  *                    queue is `label_fetched_at IS NULL`, so a killed run
  *                    picks up exactly where it stopped.
+ *   E  hours      -- one POST per venue for a weekly grid. Last, because a
+ *                    menu without hours still helps and hours without a menu
+ *                    do not.
  *
  * Every unit of work is individually caught into scrape_error. A run is
  * 'partial' under a 20% error rate and 'failed' above 50%, at which point it
@@ -26,10 +29,12 @@ import { addDays, campusToday, unixNow } from '../../time.ts';
 import type { ScraperConfig } from '../config.ts';
 import * as endpoints from '../endpoints.ts';
 import { panelOrThrow, RAW_PANEL, readPanels } from '../panels.ts';
+import { parseHours } from '../parse/hours.ts';
 import { parseItemPanel } from '../parse/item-panel.ts';
 import { parseMenuList, type ParsedMenuRef } from '../parse/menu-list.ts';
 import { parseNutritionLabel } from '../parse/nutrition-label.ts';
 import { parseChildUnits, parseUnits } from '../parse/units.ts';
+import { persistHours } from '../persist/hours.ts';
 import { persistMenu } from '../persist/menus.ts';
 import {
 	attachLabelToMenuItem,
@@ -46,6 +51,8 @@ export interface RunOptions {
 	/** Overrides config.daysAhead. */
 	daysAhead?: number;
 	skipLabels?: boolean;
+	/** Hours are a weekly grid; a nightly run can skip them. */
+	skipHours?: boolean;
 	/** Cap on labels fetched this run; undefined means drain the queue. */
 	labelBudget?: number;
 	today?: string;
@@ -320,6 +327,27 @@ export async function runScrape(
 				}
 			}
 			log(`labels fetched: ${summary.labelsFetched}`);
+		}
+
+		// ---- Phase E: hours --------------------------------------------------
+		//
+		// One POST per venue, and the answer is a weekly grid that changes rarely
+		// -- so this is skippable on a nightly run and worth doing weekly. It
+		// comes last because it is the least urgent thing on the page: a menu
+		// with no hours is still useful, hours with no menu are not.
+		if (!options.skipHours) {
+			for (const venue of venues) {
+				if (tripped()) break;
+				attempts++;
+				try {
+					const html = await endpoints.hoursOfOperation(transport, venue.nnOid);
+					const parsed = parseHours(readPanels(html).get(RAW_PANEL) ?? html);
+					if (parsed.length > 0) persistHours(db, venue.unitId, parsed, now());
+				} catch (err) {
+					fail('hours', `unit ${venue.nnOid} (${venue.name})`, 'http', err);
+				}
+			}
+			log(`hours: ${venues.length} venues`);
 		}
 	} catch (err) {
 		// A phase-level throw (bootstrap failed, budget exhausted) ends the run.

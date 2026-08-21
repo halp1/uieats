@@ -26,7 +26,8 @@ const ROUTES = {
 	'Unit/SelectUnitFromUnitsList?unitOid=32': 'select-unit-32.standalone.json',
 	'Unit/SelectUnitFromChildUnitsList': 'select-childunit-2.menulist.json',
 	'Menu/SelecUnitAndtMenu': 'itempanel-1440348.json',
-	'NutritionDetail/ShowItemNutritionLabel': 'label-122098028.html'
+	'NutritionDetail/ShowItemNutritionLabel': 'label-122098028.html',
+	'Unit/GetHoursOfOperationMarkup': 'hours-unit-5.html'
 };
 
 // The fixtures were captured on 2026-08-20, so "today" is pinned to keep the

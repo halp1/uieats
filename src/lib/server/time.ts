@@ -59,3 +59,67 @@ const MEAL_ORDER: Record<string, number> = {
 export function mealSort(meal: string): number {
 	return MEAL_ORDER[meal.trim().toLowerCase()] ?? 99;
 }
+
+/**
+ * Day of week for a 'YYYY-MM-DD' date, 0 = Sunday to match unit_hours.weekday.
+ *
+ * Parsed as UTC on purpose. The input is a date with no time in it, so there is
+ * no instant to convert and nothing for a zone to shift; going through local
+ * time would make the answer depend on the server's offset.
+ */
+export function weekdayOf(date: string): number {
+	const [y, m, d] = date.split('-').map(Number);
+	return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+const WEEKDAY_NAMES = [
+	'Sunday',
+	'Monday',
+	'Tuesday',
+	'Wednesday',
+	'Thursday',
+	'Friday',
+	'Saturday'
+];
+
+export function weekdayName(date: string): string {
+	return WEEKDAY_NAMES[weekdayOf(date)];
+}
+
+/** 'Thursday, August 20' -- for headings, where the year is just noise. */
+export function formatCampusDate(date: string): string {
+	const [y, m, d] = date.split('-').map(Number);
+	const month = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(
+		new Date(Date.UTC(y, m - 1, d))
+	);
+	return `${weekdayName(date)}, ${month} ${d}`;
+}
+
+/** '12:30 PM' from stored 'HH:MM'. */
+export function formatClock(hhmm: string): string {
+	const [h, m] = hhmm.split(':').map(Number);
+	const suffix = h < 12 ? 'AM' : 'PM';
+	const hour12 = h % 12 === 0 ? 12 : h % 12;
+	return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+/** 'updated 3h ago' -- the footer's freshness line. */
+export function describeAge(then: number | null, at: number = unixNow()): string {
+	if (then === null) return 'never';
+	const seconds = Math.max(0, at - then);
+	if (seconds < 90) return 'just now';
+	const minutes = Math.round(seconds / 60);
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.round(seconds / 3600);
+	if (hours < 48) return `${hours}h ago`;
+	return `${Math.round(hours / 24)}d ago`;
+}
+
+/**
+ * When menu data stops being trustworthy enough to present quietly.
+ *
+ * The scrape runs nightly, so 30 hours means a full run has been missed. Past
+ * that the footer switches from informational to a warning: stale menus must be
+ * visible, never silent.
+ */
+export const STALE_AFTER_SECONDS = 30 * 60 * 60;

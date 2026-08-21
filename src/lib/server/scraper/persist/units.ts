@@ -41,9 +41,17 @@ export function upsertUnit(db: Db, input: UnitInput, now: number): number {
 		return existing.id;
 	}
 
+	// Prefer the abbreviation upstream already publishes: "Ikenberry Dining
+	// Center (Ike)" gives /d/2026-08-21/ike/gregory-drive-diner rather than a
+	// URL with the whole building name in it. These end up in shared links, so
+	// short and recognisable is worth the extra line.
+	//
 	// Two venues in different halls may share a name ("Build Your Own"), and the
 	// slug index is scoped to the parent, so only disambiguate within a parent.
-	const base = slugify(input.name) || `unit-${input.nnOid}`;
+	const base =
+		slugify(shortNameFrom(input.name) ?? input.name) ||
+		slugify(input.name) ||
+		`unit-${input.nnOid}`;
 	let slug = base;
 	for (let n = 2; ; n++) {
 		const clash = db

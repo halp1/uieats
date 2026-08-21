@@ -31,6 +31,14 @@ export default defineConfig(
 				extraFileExtensions: ['.svelte'],
 				parser: ts.parser
 			}
+		},
+		rules: {
+			// This rule exists to catch links that break under a configured
+			// `paths.base`. uieats is served from the root, has no base path, and
+			// builds most of its hrefs from route params -- wrapping every one in
+			// resolve() would add noise to every template for a problem the app
+			// cannot have. Revisit if it ever moves under a sub-path.
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	},
 	{

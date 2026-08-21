@@ -59,13 +59,43 @@ function upsertMenu(db: Db, id: MenuIdentity, headerRaw: string | null, now: num
 		.lastInsertRowid;
 }
 
+/**
+ * Item-name allergen inference.
+ *
+ * Keyed on `name_checked_at` rather than on "did we just insert this row",
+ * because the second form silently skips every dish already in the registry --
+ * which is the entire catalogue the day this code first runs against a
+ * populated database. An empty item_allergen would then be indistinguishable
+ * from a clean result, which is precisely the confusion verdict.ts exists to
+ * prevent.
+ *
+ * This is the only allergen signal available before a label is fetched, which
+ * is exactly the window where a user has nothing else to go on. It is also the
+ * weakest: verdict.ts renders it as `flagged-possible`, and per the design it
+ * may only ever add a warning, never clear one.
+ */
+function matchName(db: Db, itemId: number, displayName: string, now: number): void {
+	for (const match of matchItemName(db, displayName)) {
+		db.prepare(
+			`INSERT OR IGNORE INTO item_allergen (item_id, allergen_id, confidence, evidence)
+			 VALUES (?, ?, 'possible', ?)`
+		).run(itemId, match.allergenId, `item name: ${match.evidence}`);
+	}
+	db.prepare('UPDATE item SET name_checked_at = ? WHERE id = ?').run(now, itemId);
+}
+
 /** The canonical dish registry, keyed on a conservatively normalized name. */
 function upsertItem(db: Db, displayName: string, now: number): number {
 	const nameNorm = normalizeItemName(displayName);
 	const existing = db
-		.prepare<{ id: number }>('SELECT id FROM item WHERE name_norm = ?')
+		.prepare<{ id: number; name_checked_at: number | null }>(
+			'SELECT id, name_checked_at FROM item WHERE name_norm = ?'
+		)
 		.get(nameNorm);
-	if (existing) return existing.id;
+	if (existing) {
+		if (existing.name_checked_at === null) matchName(db, existing.id, displayName, now);
+		return existing.id;
+	}
 
 	const base = slugify(displayName) || 'item';
 	let slug = base;
@@ -79,18 +109,7 @@ function upsertItem(db: Db, displayName: string, now: number): number {
 		.prepare('INSERT INTO item (name_norm, name_display, slug, first_seen_at) VALUES (?, ?, ?, ?)')
 		.run(nameNorm, displayName, slug, now).lastInsertRowid;
 
-	// Name inference runs once, when the dish first enters the registry -- the
-	// name is what it is keyed on, so it cannot change afterwards. This is the
-	// only allergen signal available before a label is fetched, which is exactly
-	// when a user has nothing else to go on. It is also the weakest: verdict.ts
-	// renders it as `flagged-possible` and it may only ever add a warning.
-	for (const match of matchItemName(db, displayName)) {
-		db.prepare(
-			`INSERT OR IGNORE INTO item_allergen (item_id, allergen_id, confidence, evidence)
-			 VALUES (?, ?, 'possible', ?)`
-		).run(itemId, match.allergenId, `item name: ${match.evidence}`);
-	}
-
+	matchName(db, itemId, displayName, now);
 	return itemId;
 }
 
