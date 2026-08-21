@@ -10,6 +10,7 @@
  * item-name inference live in allergens/match.ts, because they carry lower
  * confidence and need the full alias table with its negative prefixes.
  */
+import { hiddenSourceTerms, matchIngredients } from '../../allergens/match.ts';
 import type { Db } from '../../db/driver.ts';
 import type { ParsedLabel } from '../parse/nutrition-label.ts';
 
@@ -45,8 +46,8 @@ export function persistLabel(db: Db, label: ParsedLabel, now: number): PersistLa
 					cholesterol_mg, sodium_mg, potassium_mg, total_carb_g,
 					fiber_g, fiber_is_lt, sugars_g, protein_g,
 					vit_a_dv, vit_c_dv, calcium_dv, iron_dv,
-					ingredients_text, contains_text, first_seen_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+					ingredients_text, contains_text, first_seen_at, hidden_sources
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 			)
 			.run(
 				label.contentHash,
@@ -73,7 +74,8 @@ export function persistLabel(db: Db, label: ParsedLabel, now: number): PersistLa
 				n.ironDv,
 				label.ingredientsText,
 				label.contains.join(', '),
-				now
+				now,
+				hiddenSourceTerms(label.ingredientsText).join('|') || null
 			).lastInsertRowid;
 
 		for (const [i, component] of label.components.entries()) {
@@ -85,13 +87,31 @@ export function persistLabel(db: Db, label: ParsedLabel, now: number): PersistLa
 
 		// "Contains:" is upstream's own declaration, so it is recorded at the
 		// highest confidence we ever assign.
+		const declaredIds = new Set<number>();
 		for (const token of label.contains) {
 			const allergenId = allergenIdForContains(db, token);
 			if (allergenId === null) continue;
+			declaredIds.add(allergenId);
 			db.prepare(
 				`INSERT OR IGNORE INTO nutrition_allergen (nutrition_fact_id, allergen_id, source, confidence, evidence)
 				 VALUES (?, ?, 'contains', 'declared', ?)`
 			).run(id, allergenId, `Contains: ${token}`);
+		}
+
+		// Then the inferred pass, which runs once per DISTINCT label rather than
+		// once per instance -- that is the whole reason nutrition_fact is
+		// content-addressed. The declared ids go in so that a species found
+		// beneath an already-declared group ("Tree Nuts" -> MACADAMIA NUTS) is
+		// rated `likely` rather than treated as a speculative new finding.
+		if (label.ingredientsText) {
+			for (const match of matchIngredients(db, label.ingredientsText, declaredIds)) {
+				// An allergen upstream already declared needs no weaker duplicate.
+				if (declaredIds.has(match.allergenId)) continue;
+				db.prepare(
+					`INSERT OR IGNORE INTO nutrition_allergen (nutrition_fact_id, allergen_id, source, confidence, evidence)
+					 VALUES (?, ?, 'ingredient', ?, ?)`
+				).run(id, match.allergenId, match.confidence, `ingredients: ${match.evidence}`);
+			}
 		}
 
 		return { nutritionFactId: id, created: true };
