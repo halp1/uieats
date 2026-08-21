@@ -7,3 +7,9 @@ bun.lockb
 
 # Miscellaneous
 /static/
+
+# Captured upstream responses. These are byte-exact expectations guarded by
+# manifest.json -- reformatting them would silently rewrite what the parser
+# tests assert. Upstream also emits malformed markup that prettier cannot parse
+# (e.g. title='Don's Chophouse', an unescaped quote inside a quoted attribute).
+tests/fixtures/
