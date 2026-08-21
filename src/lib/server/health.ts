@@ -7,8 +7,11 @@
  * server down with any hung request. Scraping is a cron job. This only tells
  * the truth loudly.
  */
-import type { Db } from './db/driver.ts';
 import { STALE_AFTER_SECONDS, describeAge, unixNow } from '../dates.ts';
+import { deleteStaleCodes } from './auth/codes.ts';
+import { deleteExpiredSessions } from './auth/session.ts';
+import { deleteExpiredChallenges } from './auth/webauthn.ts';
+import type { Db } from './db/driver.ts';
 
 export interface DataFreshness {
 	lastSuccessAt: number | null;
@@ -71,11 +74,14 @@ export interface HousekeepingResult {
  * applies to anything that takes the write lock.
  */
 export function runHousekeeping(db: Db, now: number = unixNow()): HousekeepingResult {
+	// Delegated rather than three DELETEs written out here: each retention rule
+	// belongs beside the code that depends on it. A login code, for instance, is
+	// kept a day past expiry so "that code has expired" is still possible
+	// instead of a bare "invalid" -- a reason that lives in codes.ts and would
+	// drift the moment it were restated in this file.
 	return db.transaction(() => ({
-		sessions: db.prepare('DELETE FROM user_session WHERE expires_at <= ?').run(now).changes,
-		// A day past expiry, not immediately: a recently-expired code is what
-		// makes "that code has expired" possible instead of a bare "invalid".
-		loginCodes: db.prepare('DELETE FROM login_code WHERE expires_at < ?').run(now - 86_400).changes,
-		challenges: db.prepare('DELETE FROM webauthn_challenge WHERE expires_at <= ?').run(now).changes
+		sessions: deleteExpiredSessions(db, now),
+		loginCodes: deleteStaleCodes(db, now),
+		challenges: deleteExpiredChallenges(db, now)
 	}));
 }

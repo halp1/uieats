@@ -134,14 +134,6 @@ const SEVERITY_RANK: Record<Verdict, number> = {
 	'no-declared': 0
 };
 
-export function isWarning(verdict: Verdict): boolean {
-	return verdict.startsWith('flagged-');
-}
-
-export function severityRank(verdict: Verdict): number {
-	return SEVERITY_RANK[verdict];
-}
-
 function advisoryFor(hiddenSources: string[]): string | null {
 	if (hiddenSources.length === 0) return null;
 	const list = [...new Set(hiddenSources)].join(', ');

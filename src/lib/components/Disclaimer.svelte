@@ -26,9 +26,10 @@
 				nothing of its own except reading the ingredient text for allergens the labels do not name.
 			</li>
 			<li>
-				<strong class="font-semibold text-ink">Nothing on this page means an item is fine.</strong>
-				A grey chip means nothing was found in what has been read so far. Recipes change, labels lag,
-				and a dish can be re-made with a different supplier the same week.
+				<strong class="font-semibold text-ink">A grey chip is not an all-clear.</strong>
+				It means nothing was found in whatever has been read so far — which for many dishes is only the
+				menu row. Recipes change, labels lag, and a dish can be re-made with a different supplier the
+				same week.
 			</li>
 			<li>
 				Shared fryers, utensils and serving lines cause cross-contact that no label records. This
