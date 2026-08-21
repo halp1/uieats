@@ -13,7 +13,7 @@
  */
 import type { ItemAllergenSummary } from '../allergens/verdict.ts';
 import type { Db } from '../db/driver.ts';
-import { getAllergenSelection, getItemVerdicts, type AllergenSelection } from './allergens.ts';
+import { getAllergenProfile, getItemVerdicts, type AllergenProfile } from './allergens.ts';
 import type { TraitView } from './menus.ts';
 import { placeholders } from './sql.ts';
 
@@ -47,6 +47,8 @@ export interface NutritionFacts {
 	ironDv: number | null;
 	ingredientsText: string | null;
 	containsText: string | null;
+	/** Upstream's cross-contact advisory, verbatim, or null. */
+	mayContainText: string | null;
 	hiddenSources: string[];
 	components: { componentName: string; ingredientText: string | null }[];
 }
@@ -108,6 +110,7 @@ interface AppearanceRow {
 	iron_dv: number | null;
 	ingredients_text: string | null;
 	contains_text: string | null;
+	may_contain_text: string | null;
 	hidden_sources: string | null;
 }
 
@@ -139,6 +142,7 @@ function toFacts(
 		ironDv: row.iron_dv,
 		ingredientsText: row.ingredients_text,
 		containsText: row.contains_text,
+		mayContainText: row.may_contain_text,
 		hiddenSources: row.hidden_sources ? row.hidden_sources.split('|') : [],
 		components
 	};
@@ -156,7 +160,7 @@ export function getItemBySlug(db: Db, slug: string): ItemIdentity | null {
 export function getItemDetail(
 	db: Db,
 	item: ItemIdentity,
-	options: { fromDate: string; userId?: number | null; selection?: AllergenSelection[] }
+	options: { fromDate: string; userId?: number | null; profile?: AllergenProfile }
 ): ItemDetail {
 	const userId = options.userId ?? null;
 
@@ -173,7 +177,7 @@ export function getItemDetail(
 			        nf.cholesterol_mg, nf.sodium_mg, nf.potassium_mg, nf.total_carb_g,
 			        nf.fiber_g, nf.fiber_is_lt, nf.sugars_g, nf.protein_g,
 			        nf.vit_a_dv, nf.vit_c_dv, nf.calcium_dv, nf.iron_dv,
-			        nf.ingredients_text, nf.contains_text, nf.hidden_sources
+			        nf.ingredients_text, nf.contains_text, nf.may_contain_text, nf.hidden_sources
 			 FROM menu_item mi
 			 JOIN menu m ON m.id = mi.menu_id
 			 JOIN unit u ON u.id = m.unit_id
@@ -185,8 +189,8 @@ export function getItemDetail(
 		.all(item.id, options.fromDate);
 
 	const menuItemIds = rows.map((r) => r.menu_item_id);
-	const selection = options.selection ?? getAllergenSelection(db, userId);
-	const verdicts = getItemVerdicts(db, selection, menuItemIds);
+	const profile = options.profile ?? getAllergenProfile(db, userId);
+	const verdicts = getItemVerdicts(db, profile, menuItemIds);
 
 	const traitRows =
 		menuItemIds.length === 0

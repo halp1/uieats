@@ -8,7 +8,7 @@
 import type { LayoutServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getFreshness } from '$lib/server/health';
-import { getAllergenSelection } from '$lib/server/queries/allergens';
+import { getAllergenProfile } from '$lib/server/queries/allergens';
 import { campusToday } from '$lib/dates';
 
 export const load: LayoutServerLoad = ({ locals }) => {
@@ -20,8 +20,12 @@ export const load: LayoutServerLoad = ({ locals }) => {
 		today: campusToday(),
 		lastUpdated: lastSuccessAt,
 		isStale,
-		// The count, not the selection: the nav shows "3 allergens" and the
-		// browse pages load the full objects themselves.
-		allergenCount: getAllergenSelection(db, locals.user?.id ?? null).length
+		// The count, not the profile: the nav shows "3 allergens" and the browse
+		// pages load the full objects themselves. Custom ones are counted -- a
+		// badge that ignored them would understate what is being checked.
+		allergenCount: (() => {
+			const profile = getAllergenProfile(db, locals.user?.id ?? null);
+			return profile.selection.length + profile.custom.length;
+		})()
 	};
 };

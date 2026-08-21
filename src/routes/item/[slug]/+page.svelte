@@ -179,6 +179,26 @@
 				</p>
 			{/if}
 
+			{#if shown.nutrition?.mayContainText}
+				<!--
+					Shown separately from the ingredients, and quoted verbatim, because
+					it is a different kind of statement: about what may have touched the
+					dish, not about what is in it. Folding it into the ingredient list is
+					what made a roll of flour and water warn for tree nuts.
+				-->
+				<div class="mt-4 border-2 border-dotted border-ink p-3">
+					<h3 class="eyebrow mb-1">Cross-contact advisory</h3>
+					<p class="font-mono text-[0.6875rem] leading-relaxed text-ink">
+						{shown.nutrition.mayContainText}
+					</p>
+					<p class="mt-2 text-xs leading-relaxed text-ink-muted">
+						Upstream's own words. These are not ingredients — they are allergens that may have
+						reached the dish through shared equipment. Whether that matters is your call, and it
+						depends on how severe your reaction is.
+					</p>
+				</div>
+			{/if}
+
 			{#if shown.nutrition?.hiddenSources.length}
 				<p class="mt-3 border-l-2 border-ink pl-2 text-xs leading-relaxed text-ink-muted">
 					This list uses umbrella terms — {shown.nutrition.hiddenSources.join(', ')} — which are allowed

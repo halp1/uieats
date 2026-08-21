@@ -8,7 +8,7 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getAllergenSelection, getDietTags } from '$lib/server/queries/allergens';
+import { getAllergenProfile, getDietTags } from '$lib/server/queries/allergens';
 import { getMenusForScope } from '$lib/server/queries/menus';
 import { getUnitBySlug } from '$lib/server/queries/units';
 import { campusToday } from '$lib/dates';
@@ -38,7 +38,7 @@ export const load: PageServerLoad = ({ params, locals, url }) => {
 		diets,
 		venueId: venue.id,
 		userId,
-		selection: getAllergenSelection(db, userId)
+		profile: getAllergenProfile(db, userId)
 	});
 
 	return {

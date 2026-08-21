@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getAllergenSelection } from '$lib/server/queries/allergens';
+import { getAllergenProfile } from '$lib/server/queries/allergens';
 import { getFavoritesServedFrom } from '$lib/server/queries/search';
 import { addDays, campusToday } from '$lib/dates';
 
@@ -10,11 +10,11 @@ export const load: PageServerLoad = ({ locals }) => {
 
 	const db = getDb();
 	const today = campusToday();
-	const selection = getAllergenSelection(db, locals.user.id);
+	const profile = getAllergenProfile(db, locals.user.id);
 
 	// A week ahead: "your favourites today" is the point of saving a dish, and
 	// the few days after are what make it worth checking again tomorrow.
-	const upcoming = getFavoritesServedFrom(db, locals.user.id, today, addDays(today, 7), selection);
+	const upcoming = getFavoritesServedFrom(db, locals.user.id, today, addDays(today, 7), profile);
 
 	// Saved dishes that are not on any upcoming menu still need listing --
 	// otherwise the page looks like the save silently failed.

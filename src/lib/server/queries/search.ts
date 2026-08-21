@@ -11,7 +11,7 @@
  * normalization is also a safety property -- see the note on `item.name_norm`.
  */
 import type { Db } from '../db/driver.ts';
-import { getAllergenSelection, getItemVerdicts, type AllergenSelection } from './allergens.ts';
+import { getAllergenProfile, getItemVerdicts, type AllergenProfile } from './allergens.ts';
 import { placeholders } from './sql.ts';
 
 export interface SearchHit {
@@ -41,7 +41,7 @@ export interface SearchParams {
 	query: string;
 	fromDate: string;
 	userId?: number | null;
-	selection?: AllergenSelection[];
+	profile?: AllergenProfile;
 	/** Hide anything with a warning for the user's own allergens. */
 	hideFlagged?: boolean;
 	/** Only dishes carrying all of these diet trait slugs. */
@@ -124,10 +124,10 @@ export function searchItems(db: Db, params: SearchParams): SearchHit[] {
 			params.hideFlagged ? limit * 4 : limit
 		);
 
-	const selection = params.selection ?? getAllergenSelection(db, userId);
+	const profile = params.profile ?? getAllergenProfile(db, userId);
 	const verdicts = getItemVerdicts(
 		db,
-		selection,
+		profile,
 		rows.map((r) => r.menu_item_id)
 	);
 
@@ -195,7 +195,7 @@ export function getFavoritesServedFrom(
 	userId: number,
 	fromDate: string,
 	toDate: string,
-	selection?: AllergenSelection[]
+	profile?: AllergenProfile
 ): FavoriteToday[] {
 	const rows = db
 		.prepare<{
@@ -222,7 +222,7 @@ export function getFavoritesServedFrom(
 		)
 		.all(userId, fromDate, toDate);
 
-	const resolved = selection ?? getAllergenSelection(db, userId);
+	const resolved = profile ?? getAllergenProfile(db, userId);
 	const verdicts = getItemVerdicts(
 		db,
 		resolved,

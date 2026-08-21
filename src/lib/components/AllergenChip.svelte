@@ -15,6 +15,7 @@
 	import CircleHelp from '@lucide/svelte/icons/circle-help';
 	import Minus from '@lucide/svelte/icons/minus';
 	import OctagonAlert from '@lucide/svelte/icons/octagon-alert';
+	import ShieldAlert from '@lucide/svelte/icons/shield-alert';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 	import type { Verdict, VerdictResult } from '$lib/server/allergens/verdict';
 
@@ -23,6 +24,7 @@
 	const STYLES: Record<Verdict, string> = {
 		'flagged-declared': 'chip-declared',
 		'flagged-likely': 'chip-likely',
+		'flagged-may-contain': 'chip-may-contain',
 		'flagged-possible': 'chip-possible',
 		'no-declared': 'chip-none',
 		unknown: 'chip-unknown'
@@ -31,6 +33,8 @@
 	const ICONS = {
 		'flagged-declared': OctagonAlert,
 		'flagged-likely': TriangleAlert,
+		// A shield: this is about what may have touched the dish, not what is in it.
+		'flagged-may-contain': ShieldAlert,
 		'flagged-possible': CircleHelp,
 		'no-declared': Minus,
 		unknown: CircleDashed

@@ -53,7 +53,7 @@
 	instead if that is the one you react to.
 </p>
 
-<form method="POST" class="mt-8">
+<form method="POST" action="?/save" class="mt-8">
 	{#each data.tree as node (node.id)}
 		<div class="rule-hair py-2">
 			<div class="flex items-center gap-3">
@@ -156,6 +156,95 @@
 	</div>
 </form>
 
+<section class="mt-14">
+	<h2 class="rule-group pb-1 text-lg font-bold">Something not on the list</h2>
+	<p class="mt-3 text-sm leading-relaxed text-ink-muted">
+		Add anything you react to. uieats will look for it in the ingredient text of every dish whose
+		label it has read.
+	</p>
+	<p class="mt-2 border-l-2 border-ink pl-3 text-xs leading-relaxed text-ink-muted">
+		<strong class="font-semibold text-ink">These can only ever be found in the ingredients.</strong>
+		The university tags 18 allergens on its menu rows; yours is not one of them, so on any dish whose
+		label has not been read yet the honest answer is
+		<span class="chip chip-unknown align-middle">unverified</span> rather than a clean result.
+	</p>
+
+	{#if data.custom.length > 0}
+		<ul class="mt-5">
+			{#each data.custom as entry (entry.id)}
+				<li class="rule-hair flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2">
+					<div class="min-w-0">
+						<p class="text-[0.9375rem] font-medium">{entry.label}</p>
+						<p class="font-mono text-[0.6875rem] text-ink-faint">
+							looks for: {entry.terms.join(', ')}
+						</p>
+					</div>
+					<form method="POST" action="?/removeCustom" class="shrink-0">
+						<input type="hidden" name="id" value={-entry.id} />
+						<button
+							type="submit"
+							class="border border-ink px-2 py-0.5 text-[0.6875rem] font-semibold hover:bg-paper-sunk"
+						>
+							Remove
+						</button>
+					</form>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+
+	{#if data.custom.length < data.limits.maxCustom}
+		<form method="POST" action="?/addCustom" class="mt-5">
+			<div class="flex flex-wrap items-end gap-3">
+				<label class="min-w-40 flex-1">
+					<span class="eyebrow block">Name</span>
+					<input
+						name="label"
+						type="text"
+						required
+						maxlength={data.limits.maxLabel}
+						placeholder="Kiwi"
+						class="mt-1 w-full border-0 border-b-2 border-ink bg-transparent px-0 py-1.5 text-sm focus:ring-0"
+					/>
+				</label>
+				<label class="min-w-56 flex-[2]">
+					<span class="eyebrow block">Words to look for (optional)</span>
+					<input
+						name="terms"
+						type="text"
+						placeholder="kiwi, kiwifruit"
+						class="mt-1 w-full border-0 border-b-2 border-ink bg-transparent px-0 py-1.5 text-sm focus:ring-0"
+					/>
+				</label>
+				<button type="submit" class="bg-ink-full px-4 py-2 text-sm font-bold text-paper">Add</button
+				>
+			</div>
+			<p class="mt-2 text-xs leading-relaxed text-ink-faint">
+				Leave the second box empty and the name is used. Give a comma-separated list when one word
+				will not find it — <span class="font-mono">nightshade</span> appears on no label, whereas
+				<span class="font-mono">tomato, potato, aubergine, paprika</span> does. At least
+				{data.limits.minTerm} letters each.
+			</p>
+		</form>
+	{:else}
+		<p class="mt-4 text-sm text-ink-muted">
+			You have reached the limit of {data.limits.maxCustom}. Remove one to add another.
+		</p>
+	{/if}
+
+	{#if form && 'customError' in form && form.customError}
+		<p class="mt-4 border-l-2 border-ink pl-3 text-sm">{form.customError}</p>
+	{/if}
+	{#if form && 'customAdded' in form && form.customAdded}
+		<p class="mt-4 text-sm font-semibold">
+			Added {form.customAdded} — looking for {form.terms?.join(', ')}.
+		</p>
+	{/if}
+	{#if form && 'customRemoved' in form && form.customRemoved}
+		<p class="mt-4 text-sm font-semibold">Removed.</p>
+	{/if}
+</section>
+
 <div class="mt-12 border-2 border-ink p-4">
 	<h2 class="eyebrow mb-2">What a chip actually means</h2>
 	<dl class="space-y-2 text-xs leading-relaxed text-ink-muted">
@@ -166,6 +255,13 @@
 		<div class="flex flex-wrap items-baseline gap-2">
 			<dt class="chip chip-likely shrink-0">Mustard</dt>
 			<dd>Named in the ingredient list, though upstream did not tag it.</dd>
+		</div>
+		<div class="flex flex-wrap items-baseline gap-2">
+			<dt class="chip chip-may-contain shrink-0">May contain Tree Nuts</dt>
+			<dd>
+				Upstream's own cross-contact advisory — shared equipment, not an ingredient. Only you can
+				say whether that is close enough to matter.
+			</dd>
 		</div>
 		<div class="flex flex-wrap items-baseline gap-2">
 			<dt class="chip chip-possible shrink-0">Peanuts</dt>
