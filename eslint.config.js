@@ -37,6 +37,11 @@ export default defineConfig(
 		// The scraper CLI runs under plain node, outside Vite's resolver.
 		files: ['src/lib/server/scraper/**/*.ts', 'scripts/**/*.ts'],
 		rules: {
+			// Node's type-stripping is strip-only: it cannot desugar TypeScript
+			// parameter properties (`constructor(private readonly x: T)`). vitest's
+			// esbuild transform accepts them, so the tests pass while the CLI fails
+			// to even load. Ban them in everything the CLI imports.
+			'@typescript-eslint/parameter-properties': ['error', { prefer: 'class-property' }],
 			'no-restricted-imports': [
 				'error',
 				{
