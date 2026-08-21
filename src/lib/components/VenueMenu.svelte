@@ -9,7 +9,8 @@
 	under the venue, medium under the meal, hairline between dishes.
 -->
 <script lang="ts">
-	import type { VenueView } from '$lib/server/queries/menus';
+	import CircleDashed from '@lucide/svelte/icons/circle-dashed';
+	import type { MealView, VenueView } from '$lib/server/queries/menus';
 	import { formatClock } from '$lib/server/time';
 	import ItemRow from './ItemRow.svelte';
 
@@ -46,6 +47,44 @@
 			)
 			.join(', ');
 	});
+
+	/**
+	 * Allergens that are `unknown` for EVERY dish on a meal, hoisted out of the
+	 * rows and stated once.
+	 *
+	 * This is not a decluttering exercise. Before any label is fetched, celery
+	 * and mustard are unverifiable on all two dozen dishes -- and a chip repeated
+	 * on all two dozen rows stops being read at all, which is precisely the
+	 * "teach users to ignore warnings" failure the design is built to avoid. Said
+	 * once, in a sentence, it registers. Anything unknown on only SOME dishes
+	 * stays on its rows, because there the difference between them is the signal.
+	 */
+	function hoistedUnknowns(meal: MealView): { slug: string; label: string }[] {
+		const items = meal.categories.flatMap((c) => c.items);
+		if (items.length === 0) return [];
+		// Anonymous users have no summaries at all; nothing to hoist.
+		if (!items.every((i) => i.allergens !== null)) return [];
+
+		const unknownIn = (item: (typeof items)[number]) =>
+			new Set(
+				item.allergens!.verdicts.filter((v) => v.verdict === 'unknown').map((v) => v.allergen.slug)
+			);
+
+		const shared = unknownIn(items[0]);
+		for (const item of items.slice(1)) {
+			const here = unknownIn(item);
+			for (const slug of [...shared]) if (!here.has(slug)) shared.delete(slug);
+		}
+
+		return items[0]
+			.allergens!.verdicts.filter((v) => shared.has(v.allergen.slug))
+			.map((v) => ({ slug: v.allergen.slug, label: v.allergen.label }));
+	}
+
+	function listOf(labels: string[]): string {
+		if (labels.length === 1) return labels[0];
+		return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+	}
 </script>
 
 <section class="mb-10">
@@ -70,6 +109,7 @@
 	{/if}
 
 	{#each meals as meal (meal.menuId)}
+		{@const hoisted = hoistedUnknowns(meal)}
 		<div class="mt-5">
 			<h3 class="rule-group flex items-baseline justify-between pb-0.5">
 				<span class="text-base font-bold">{meal.meal}</span>
@@ -87,12 +127,27 @@
 				</p>
 			{/if}
 
+			{#if hoisted.length > 0}
+				<p
+					class="mt-2 flex items-start gap-1.5 border border-rule bg-paper-sunk px-2 py-1.5 text-xs leading-relaxed text-ink-muted"
+				>
+					<CircleDashed class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+					<span>
+						<span class="font-semibold text-ink">
+							{listOf(hoisted.map((h) => h.label))} cannot be checked on this menu yet.
+						</span>
+						The university does not tag {hoisted.length === 1 ? 'it' : 'them'} on menu rows, and no nutrition
+						label has been read for any of these {meal.itemCount} dishes. That is not the same as absent.
+					</span>
+				</p>
+			{/if}
+
 			{#each meal.categories as category (category.id)}
 				<div class="mt-4">
 					<h4 class="eyebrow rule-hair pb-0.5">{category.name}</h4>
 					<ul>
 						{#each category.items as item (item.menuItemId)}
-							<ItemRow {item} />
+							<ItemRow {item} hoisted={hoisted.map((h) => h.slug)} />
 						{/each}
 					</ul>
 				</div>

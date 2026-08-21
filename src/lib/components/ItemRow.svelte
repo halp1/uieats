@@ -15,16 +15,40 @@
 	import type { MenuItemView } from '$lib/server/queries/menus';
 	import AllergenChip from './AllergenChip.svelte';
 
-	let { item, showDiet = true }: { item: MenuItemView; showDiet?: boolean } = $props();
+	let {
+		item,
+		showDiet = true,
+		hoisted = []
+	}: {
+		item: MenuItemView;
+		showDiet?: boolean;
+		/**
+		 * Allergen slugs the parent has already explained for the whole menu.
+		 * Repeating them per row would turn a real warning into wallpaper.
+		 */
+		hoisted?: string[];
+	} = $props();
 
 	const summary = $derived(item.allergens);
 	// Only the chips that say something. A user with eight allergens does not
 	// want eight grey "not declared" chips on every one of 150 rows -- the
 	// warnings and the gaps are the signal.
 	const notable = $derived(
-		summary ? summary.verdicts.filter((v) => v.verdict !== 'no-declared') : []
+		summary
+			? summary.verdicts.filter(
+					(v) => v.verdict !== 'no-declared' && !hoisted.includes(v.allergen.slug)
+				)
+			: []
 	);
-	const clearCount = $derived(summary ? summary.verdicts.length - notable.length : 0);
+	// Counts every allergen NOT shown as its own chip and not hoisted, so the
+	// row still accounts for the user's whole selection.
+	const clearCount = $derived(
+		summary
+			? summary.verdicts.filter(
+					(v) => v.verdict === 'no-declared' && !hoisted.includes(v.allergen.slug)
+				).length
+			: 0
+	);
 	const diets = $derived(showDiet ? item.traits.filter((t) => t.isDiet) : []);
 </script>
 
