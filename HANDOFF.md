@@ -1,6 +1,6 @@
 # uieats — handoff
 
-**Status: complete and working end to end. 312 tests green. Phases 0–9 done.**
+**Status: complete and working end to end. 354 tests green. Phases 0–9 done.**
 
 Read `README.md` for what the app is and how the safety model works, then
 `ops/README.md` for running it. This file is only what a next session needs that
@@ -8,7 +8,7 @@ those two do not say.
 
 ```bash
 bun install
-bun run test          # 312 tests, ~1s
+bun run test          # 354 tests, ~1s
 bun run check         # 0 errors
 bun run lint
 bun run build && node build/index.js     # verified: serves
@@ -28,17 +28,19 @@ exercise of that layer.
 
 Everything below was actually run, not reasoned about.
 
-| Check                        | Result                                                                       |
-| ---------------------------- | ---------------------------------------------------------------------------- |
-| Live scrape, all 12 units    | 36 venues, 133 menus, 1,639 items, 205 labels, 0 errors                      |
-| Allergen engine on real data | finds mustard, celery, anchovy, shrimp, barley — **none** declared upstream  |
-| Group → species resolution   | `Contains: Tree Nuts` + prose `MACADAMIA NUTS` ⇒ `Tree Nuts — Macadamia`     |
-| Full auth flow               | request → wrong code rejected → correct code → account → allergens → chips   |
-| Favourites                   | saved, appears under "On today", allergen filter hides it                    |
-| Live smoke test              | `LIVE_SCRAPE_TEST=1 bun run test:live` green against the real site           |
-| Production build             | `node build/index.js` serves; migrations resolve                             |
-| Responsive                   | no horizontal overflow at 375px on any page, with `sm:` classes still active |
-| Screenshot review            | strictly greyscale; the five severity forms are distinct at a glance         |
+| Check                        | Result                                                                        |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| Live scrape, all 12 units    | 36 venues, 133 menus, 1,639 items, 205 labels, 0 errors                       |
+| Allergen engine on real data | finds mustard, celery, anchovy, shrimp, barley — **none** declared upstream   |
+| Group → species resolution   | `Contains: Tree Nuts` + prose `MACADAMIA NUTS` ⇒ `Tree Nuts — Macadamia`      |
+| Full auth flow               | request → wrong code rejected → correct code → account → allergens → chips    |
+| Favourites                   | saved, appears under "On today", allergen filter hides it                     |
+| Live smoke test              | `LIVE_SCRAPE_TEST=1 bun run test:live` green against the real site            |
+| Production build             | `node build/index.js` serves; migrations resolve                              |
+| Responsive                   | no horizontal overflow at 375px on any page, with `sm:` classes still active  |
+| Screenshot review            | strictly greyscale; the five severity forms are distinct at a glance          |
+| Concurrent scrape            | second run exits 0 quietly on the lock; a lock >1h old is reclaimed           |
+| Date arithmetic              | month, year, leap-year and both DST transitions, all in `tests/dates.test.ts` |
 
 ---
 
@@ -100,8 +102,6 @@ item SET name_checked_at = NULL` is the intended way to force it; there is no
   against the live site. The first full crawl is ~90 minutes; the estimate of
   ~2,234 menus and ~31k items is from the plan's enumeration, not measured by
   this code.
-- **`getFavoritesServedFrom` has no test.** The favourites page was verified by
-  hand, not covered.
 
 ---
 
