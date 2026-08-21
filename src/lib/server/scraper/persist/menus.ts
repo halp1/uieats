@@ -14,6 +14,7 @@
  *     Scoping the delete to one successfully-parsed menu is what stops a
  *     network failure from erasing real data.
  */
+import { matchItemName } from '../../allergens/match.ts';
 import type { Db } from '../../db/driver.ts';
 import { mealSort } from '../../time.ts';
 import type { ParsedItemPanel } from '../parse/item-panel.ts';
@@ -74,9 +75,23 @@ function upsertItem(db: Db, displayName: string, now: number): number {
 		slug = `${base}-${n}`;
 	}
 
-	return db
+	const itemId = db
 		.prepare('INSERT INTO item (name_norm, name_display, slug, first_seen_at) VALUES (?, ?, ?, ?)')
 		.run(nameNorm, displayName, slug, now).lastInsertRowid;
+
+	// Name inference runs once, when the dish first enters the registry -- the
+	// name is what it is keyed on, so it cannot change afterwards. This is the
+	// only allergen signal available before a label is fetched, which is exactly
+	// when a user has nothing else to go on. It is also the weakest: verdict.ts
+	// renders it as `flagged-possible` and it may only ever add a warning.
+	for (const match of matchItemName(db, displayName)) {
+		db.prepare(
+			`INSERT OR IGNORE INTO item_allergen (item_id, allergen_id, confidence, evidence)
+			 VALUES (?, ?, 'possible', ?)`
+		).run(itemId, match.allergenId, `item name: ${match.evidence}`);
+	}
+
+	return itemId;
 }
 
 export function persistMenu(

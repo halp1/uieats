@@ -162,3 +162,49 @@ export function matchItemName(db: Db, itemName: string): AllergenMatch[] {
 
 	return matches;
 }
+
+/**
+ * Umbrella ingredient terms, which hide their own contents.
+ *
+ * "SPICES" and "NATURAL FLAVOR" are legally permitted collective names in the
+ * US, so an allergen can sit inside one without ever being written down.
+ * Treating them as hits would flag nearly every dish and train users to ignore
+ * warnings; treating them as nothing would let "not found in the ingredients"
+ * sound more conclusive than it is. So they are neither -- they become an
+ * advisory attached to an unflagged verdict. See verdict.ts.
+ */
+const HIDDEN_SOURCE_TERMS = [
+	'natural flavor',
+	'natural flavour',
+	'artificial flavor',
+	'artificial flavour',
+	'natural and artificial flavor',
+	'flavoring',
+	'flavouring',
+	'spices',
+	'spice blend',
+	'seasoning',
+	'seasoning blend',
+	'modified food starch',
+	'vegetable oil',
+	'mono and diglycerides'
+];
+
+/** The umbrella terms present in a label's ingredient prose, as written. */
+export function hiddenSourceTerms(ingredientsText: string | null | undefined): string[] {
+	if (!ingredientsText) return [];
+
+	const found: string[] = [];
+	for (const term of HIDDEN_SOURCE_TERMS) {
+		const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const m = new RegExp(`(?<![a-z])${escaped}(?:s|es)?(?![a-z])`, 'i').exec(ingredientsText);
+		// Report it exactly as the label wrote it, so the advisory quotes the
+		// source rather than paraphrasing it.
+		if (m) found.push(m[0]);
+	}
+
+	// Longer terms subsume shorter ones: "SPICE BLEND" already covers "SPICE".
+	return found.filter(
+		(t) => !found.some((other) => other !== t && other.toLowerCase().includes(t.toLowerCase()))
+	);
+}

@@ -42,6 +42,7 @@ describe('migrations', () => {
 			'allergen_alias',
 			'favorite',
 			'item',
+			'item_allergen',
 			'login_code',
 			'menu',
 			'menu_category',
