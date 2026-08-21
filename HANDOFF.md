@@ -161,12 +161,25 @@ relevant code. The first eight are inherited and still true; the rest are new.
     them by `detailOid` alone. Keying on the name collapsed them and kept
     whichever came last in the markup. `item` remains the canonical DISH
     registry; two instances of one dish share an `item_id`.
-16. **Compare against the live site, not against the parsers.** Both bugs above
+16. **Upstream retires past days, and nothing used to remove them.** Its menu
+    list ran 2026-08-21..09-17 on the 21st; the 20th was simply gone. The sweep
+    in `persistMenu` is scoped to menus a run actually parsed (deliberately —
+    a network failure must not erase data), so a menu that fell out of the
+    window was never touched again, and its items sat in the label queue
+    forever. The endpoint answers **0 bytes** for a retired menu, and because
+    the queue is `service_date ASC` they sorted FIRST — so every run began by
+    failing, reported `partial`, and would eventually have crossed the 50%
+    circuit breaker and aborted the real work behind them. Fixed by
+    `pruneMenusBefore(db, from)` plus a `notBefore` gate on the queue.
+17. **Compare against the live site, not against the parsers.** Both bugs above
     passed every test in the repo and were invisible in the database. They only
     showed up as a count mismatch against upstream. There is an audit script
     pattern for this in the session history worth rebuilding if numbers ever
     look off: walk every venue, parse each menu, and diff parsed-item-count
     against stored-item-count.
+18. **A `partial` run is a signal, not noise.** All three bugs above showed up
+    first as a status or a count that was slightly off, and each was easy to
+    read as "flaky upstream". None of them were.
 
 ---
 

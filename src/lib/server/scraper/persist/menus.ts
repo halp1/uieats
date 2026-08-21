@@ -234,3 +234,28 @@ export function persistMenu(
 		return { menuId, itemsUpserted, itemsRemoved };
 	});
 }
+
+/**
+ * Deletes menus for dates upstream no longer publishes.
+ *
+ * Upstream retires past days: on 2026-08-21 its menu list ran 08-21 to 09-17,
+ * and 08-20 was simply gone. Our rows for a retired date are never refreshed --
+ * the per-menu sweep in `persistMenu` only touches menus this run actually
+ * parsed, deliberately, so a network failure cannot erase data. Nothing else
+ * ever removed them.
+ *
+ * Left alone they are not merely untidy. Their items sit in the nutrition
+ * backfill queue as `label_fetched_at IS NULL` forever, and the label endpoint
+ * answers 0 bytes for a menu it no longer offers (measured). Because the queue
+ * is ordered by service_date ASC, those unfetchable items sort FIRST -- so every
+ * night starts by failing, the run reports `partial`, and as more dates retire
+ * the error rate climbs toward the 50% circuit breaker that would abort the real
+ * work behind them.
+ *
+ * Only the past is pruned, and only strictly before the window's start, so a
+ * narrower `--days` run can never delete future menus it simply did not ask for.
+ * The cascade takes menu_category, menu_item and menu_item_trait with it.
+ */
+export function pruneMenusBefore(db: Db, date: string): number {
+	return db.prepare('DELETE FROM menu WHERE service_date < ?').run(date).changes;
+}

@@ -62,7 +62,6 @@ describe('migrations', () => {
 			'user',
 			'user_allergen',
 			'user_session',
-			'v_pending_labels',
 			'webauthn_challenge',
 			'webauthn_credential'
 		];
