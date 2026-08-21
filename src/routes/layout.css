@@ -1,3 +1,248 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
-@plugin '@tailwindcss/typography';
+
+/*
+ * uieats reads like the artifact it is made of: a nutrition label.
+ *
+ * The brief rules out colour entirely, and a grayscale interface still needs a
+ * way to say "this one matters more". The FDA label already solved that, in
+ * print, without hue: hierarchy is carried by RULE WEIGHT (hairline between
+ * nutrients, 1px between groups, a heavy bar under the title), values are
+ * locked to the right margin, and indentation encodes taxonomy depth. Every
+ * student reading this app has read that panel a hundred times, so borrowing
+ * its grammar is not decoration -- it is the most legible thing available and
+ * it costs no colour at all.
+ *
+ * The same logic drives allergen severity, where it matters most: solid fill,
+ * outline, dashed outline and hairline are four unmistakably different forms,
+ * each with its own icon. Encoding that in red/amber/green would have been
+ * worse even if the brief allowed it -- roughly one man in twelve could not
+ * read it.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+	/*
+	 * A single grey ramp. Named by role rather than by lightness so that a
+	 * component never hard-codes a step it does not mean.
+	 */
+	--color-paper: #ffffff;
+	--color-paper-sunk: #f4f4f4;
+	--color-rule-hair: #d4d4d4;
+	--color-rule: #a3a3a3;
+	--color-ink-faint: #737373;
+	--color-ink-muted: #525252;
+	--color-ink: #171717;
+	--color-ink-full: #000000;
+
+	/* shadcn's tokens, mapped onto that ramp. */
+	--color-background: var(--color-paper);
+	--color-foreground: var(--color-ink);
+	--color-card: var(--color-paper);
+	--color-card-foreground: var(--color-ink);
+	--color-popover: var(--color-paper);
+	--color-popover-foreground: var(--color-ink);
+	--color-primary: var(--color-ink-full);
+	--color-primary-foreground: var(--color-paper);
+	--color-secondary: var(--color-paper-sunk);
+	--color-secondary-foreground: var(--color-ink);
+	--color-muted: var(--color-paper-sunk);
+	--color-muted-foreground: var(--color-ink-faint);
+	--color-accent: var(--color-paper-sunk);
+	--color-accent-foreground: var(--color-ink);
+	/*
+	 * shadcn ships --destructive as red. Nothing in this app is allowed a hue,
+	 * and allergen severity is carried by form instead, so destructive collapses
+	 * to plain ink. A component reaching for it gets emphasis, not alarm.
+	 */
+	--color-destructive: var(--color-ink-full);
+	--color-destructive-foreground: var(--color-paper);
+	--color-border: var(--color-rule-hair);
+	--color-input: var(--color-rule);
+	--color-ring: var(--color-ink);
+	--color-sidebar: var(--color-paper);
+	--color-sidebar-foreground: var(--color-ink);
+	--color-sidebar-border: var(--color-rule-hair);
+	--color-sidebar-ring: var(--color-ink);
+	--color-sidebar-accent: var(--color-paper-sunk);
+	--color-sidebar-accent-foreground: var(--color-ink);
+	--color-sidebar-primary: var(--color-ink-full);
+	--color-sidebar-primary-foreground: var(--color-paper);
+
+	/*
+	 * Square, everywhere. The label has no rounded corners and neither does
+	 * this: it is the one commitment that stops the page reading like a generic
+	 * dashboard, and it applies to the shadcn primitives too.
+	 */
+	--radius: 0px;
+	--radius-sm: 0px;
+	--radius-md: 0px;
+	--radius-lg: 0px;
+	--radius-xl: 0px;
+
+	/*
+	 * Archivo is a grotesque built for institutional print at small sizes --
+	 * the register of a dining-hall sign, which is what this is. IBM Plex Mono
+	 * carries anything quoted from upstream: evidence strings, ingredient prose,
+	 * nutrient values. Mono there is a claim, not a style -- it means "these are
+	 * upstream's own words, not our summary of them".
+	 */
+	--font-sans:
+		'Archivo', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+	/* Graduated rule weights, the actual hierarchy system. */
+	--rule-hair: 1px;
+	--rule-group: 2px;
+	--rule-section: 4px;
+	--rule-title: 8px;
+}
+
+@layer base {
+	:root {
+		color-scheme: light;
+	}
+
+	* {
+		border-color: var(--color-rule-hair);
+	}
+
+	body {
+		background: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		/* Label type is tight and dense; the default tracking reads too loose. */
+		letter-spacing: -0.011em;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	/*
+	 * Numbers must line up in columns, in nutrient tables and calorie counts
+	 * alike. Non-tabular figures in a right-locked column look broken.
+	 */
+	.tabular,
+	table {
+		font-variant-numeric: tabular-nums;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--color-ink-full);
+		outline-offset: 2px;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			transition-duration: 0.01ms !important;
+		}
+	}
+}
+
+@layer components {
+	/* ---- The label's structural rules ---------------------------------- */
+
+	.rule-title {
+		border-bottom: var(--rule-title) solid var(--color-ink-full);
+	}
+	.rule-section {
+		border-bottom: var(--rule-section) solid var(--color-ink-full);
+	}
+	.rule-group {
+		border-bottom: var(--rule-group) solid var(--color-ink);
+	}
+	.rule-hair {
+		border-bottom: var(--rule-hair) solid var(--color-rule-hair);
+	}
+
+	/*
+	 * An eyebrow: the small caps label above a block. On the FDA panel this is
+	 * how "Amount Per Serving" sits over the numbers.
+	 */
+	.eyebrow {
+		font-size: 0.6875rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--color-ink-muted);
+	}
+
+	.display {
+		font-weight: 800;
+		letter-spacing: -0.03em;
+		line-height: 0.95;
+	}
+
+	/* ---- Allergen chips: severity as form ------------------------------ */
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.0625rem 0.375rem;
+		font-size: 0.6875rem;
+		font-weight: 700;
+		line-height: 1.4;
+		letter-spacing: 0.01em;
+		white-space: nowrap;
+	}
+
+	/* Upstream said so. The heaviest form available: filled, inverted. */
+	.chip-declared {
+		background: var(--color-ink-full);
+		color: var(--color-paper);
+		border: 2px solid var(--color-ink-full);
+	}
+
+	/* We read it in the ingredient list. Same weight of line, no fill. */
+	.chip-likely {
+		background: var(--color-paper);
+		color: var(--color-ink-full);
+		border: 2px solid var(--color-ink-full);
+	}
+
+	/* The dish name only. Dashed, because the claim itself is broken up. */
+	.chip-possible {
+		background: var(--color-paper);
+		color: var(--color-ink);
+		border: 1px dashed var(--color-ink);
+	}
+
+	/*
+	 * Nothing found. Deliberately the quietest thing on the page, and its text
+	 * always reads "No X declared" -- never a word suggesting clearance.
+	 */
+	.chip-none {
+		background: var(--color-paper);
+		color: var(--color-ink-faint);
+		border: 1px solid var(--color-rule-hair);
+		font-weight: 500;
+	}
+
+	/*
+	 * Unverified. Sunk rather than outlined, so it reads as an absence of
+	 * information rather than as a result. It sorts ABOVE chip-none, because
+	 * "we have not looked" needs a user's attention and "we looked" does not.
+	 */
+	.chip-unknown {
+		background: repeating-linear-gradient(
+			-45deg,
+			var(--color-paper),
+			var(--color-paper) 3px,
+			var(--color-paper-sunk) 3px,
+			var(--color-paper-sunk) 6px
+		);
+		color: var(--color-ink-muted);
+		border: 1px solid var(--color-rule);
+		font-weight: 600;
+	}
+
+	/* A diet tag is a filter, never a warning: no border at all. */
+	.chip-diet {
+		background: var(--color-paper-sunk);
+		color: var(--color-ink-muted);
+		font-weight: 600;
+	}
+}

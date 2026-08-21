@@ -12,6 +12,7 @@ const VOLATILE = new Set([
 	'scraped_at',
 	'fetched_at',
 	'label_fetched_at',
+	'name_checked_at',
 	'created_at',
 	'started_at',
 	'finished_at',

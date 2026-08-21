@@ -22,6 +22,16 @@ CREATE TABLE item_allergen (
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX idx_ia_allergen ON item_allergen(allergen_id);
 
+-- Distinguishes "checked the name, found nothing" from "never checked".
+--
+-- Without this the name pass could only ever run on a freshly-inserted item, so
+-- deploying it over an existing database would leave every dish already in the
+-- registry permanently unmatched -- and an empty item_allergen would be
+-- indistinguishable from a clean result. Nulling this column is also how a
+-- change to the `name` aliases gets re-applied to the back catalogue.
+ALTER TABLE item ADD COLUMN name_checked_at INTEGER;
+CREATE INDEX idx_item_unchecked ON item(id) WHERE name_checked_at IS NULL;
+
 -- Pipe-separated umbrella terms found in the ingredient list ("SPICES",
 -- "NATURAL FLAVOR", "MODIFIED FOOD STARCH"). These are not allergen hits --
 -- flagging them as such would warn on nearly every dish and teach users to
