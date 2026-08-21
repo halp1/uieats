@@ -12,14 +12,14 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getAllergenSelection } from '$lib/server/queries/allergens';
+import { getAllergenSelection, getDietTags } from '$lib/server/queries/allergens';
 import { getMenusForScope } from '$lib/server/queries/menus';
 import { getUnitBySlug } from '$lib/server/queries/units';
-import { campusToday } from '$lib/server/time';
+import { campusToday } from '$lib/dates';
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-export const load: PageServerLoad = ({ params, locals }) => {
+export const load: PageServerLoad = ({ params, locals, url }) => {
 	if (!DATE_PATTERN.test(params.date)) error(400, 'Dates look like 2026-08-21.');
 
 	const db = getDb();
@@ -27,12 +27,17 @@ export const load: PageServerLoad = ({ params, locals }) => {
 	if (!root) error(404, 'No dining location with that name.');
 
 	const userId = locals.user?.id ?? null;
+	// Diet filters live in the URL, not in component state: "Ike, vegan, today"
+	// is a link worth sending someone, and it costs no client JavaScript.
+	const diets = url.searchParams.getAll('diet');
+
 	const scope = getMenusForScope(db, {
 		date: params.date,
 		root,
+		diets,
 		userId,
 		selection: getAllergenSelection(db, userId)
 	});
 
-	return { date: params.date, today: campusToday(), scope };
+	return { date: params.date, today: campusToday(), scope, diets, dietTags: getDietTags(db) };
 };

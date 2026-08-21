@@ -32,7 +32,7 @@ import {
 	persistLabel
 } from '../src/lib/server/scraper/persist/nutrition.ts';
 import { recordUnitStatus, upsertUnit } from '../src/lib/server/scraper/persist/units.ts';
-import { unixNow } from '../src/lib/server/time.ts';
+import { unixNow } from '../src/lib/dates.ts';
 
 const FIXTURES = join(
 	dirname(fileURLToPath(import.meta.url)),

@@ -4,7 +4,7 @@
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import { page } from '$app/state';
 	import Disclaimer from '$lib/components/Disclaimer.svelte';
-	import { describeAge } from '$lib/server/time';
+	import { describeAge } from '$lib/dates';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();

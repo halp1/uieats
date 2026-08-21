@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getAllergenTree, getDietTags } from '$lib/server/queries/allergens';
-import { unixNow } from '$lib/server/time';
+import { unixNow } from '$lib/dates';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	if (!locals.user) redirect(303, '/auth/login?next=/settings/allergens');

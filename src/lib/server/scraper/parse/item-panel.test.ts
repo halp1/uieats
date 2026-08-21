@@ -104,3 +104,22 @@ describe('parseItemPanel degenerate input', () => {
 		expect(empty.header.venue).toBeNull();
 	});
 });
+
+describe('a menu with no items', () => {
+	// Upstream really does publish a meal before its dishes are entered. The
+	// parser has to return an empty menu rather than throw, because the crawl
+	// treats a throw as a failed fetch and would keep retrying a menu that is
+	// simply not filled in yet.
+	const panel = parseItemPanel(fixturePanel('itempanel-empty.json', 'itemPanel'));
+
+	it('still reads the header', () => {
+		expect(panel.header.venue).toBe('Prairie Fire');
+		expect(panel.header.serviceDate).toBe('2026-08-23');
+		expect(panel.header.meal).toBe('Lunch');
+	});
+
+	it('reports no categories and no items rather than failing', () => {
+		expect(panel.categories).toEqual([]);
+		expect(panel.items).toEqual([]);
+	});
+});

@@ -4,12 +4,44 @@
  * user_version >= N", which makes re-running a no-op and makes the state
  * inspectable with a single pragma.
  */
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Db } from './driver.ts';
 
-const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'migrations');
+/**
+ * Where the .sql files are, which is not one place.
+ *
+ * Module-relative resolution is correct under `node scripts/scrape.ts`, under
+ * vitest, and in `vite dev` -- but NOT in the adapter-node build, where this
+ * module has been bundled into `build/server/chunks/` and the .sql files were
+ * never copied. That failure only appears when the built artifact actually
+ * starts, which is why it is worth a search list and an explicit error rather
+ * than one path and a stack trace.
+ *
+ * MIGRATIONS_DIR overrides everything, for a deployment that puts them
+ * somewhere else entirely.
+ */
+function resolveMigrationsDir(): string {
+	const override = process.env.MIGRATIONS_DIR?.trim();
+	if (override) return resolve(override);
+
+	const candidates = [
+		// Source layout: the CLI, tests, and `vite dev`.
+		join(dirname(fileURLToPath(import.meta.url)), 'migrations'),
+		// Bundled server: the repo is still the deployment, per ops/README.md.
+		join(process.cwd(), 'src', 'lib', 'server', 'db', 'migrations')
+	];
+
+	const found = candidates.find((dir) => existsSync(dir));
+	if (found) return found;
+
+	throw new Error(
+		`Could not find the migrations directory. Looked in:\n` +
+			candidates.map((c) => `  ${c}`).join('\n') +
+			`\nSet MIGRATIONS_DIR if they live somewhere else.`
+	);
+}
 
 export interface Migration {
 	version: number;
@@ -17,7 +49,7 @@ export interface Migration {
 	sql: string;
 }
 
-export function loadMigrations(dir: string = MIGRATIONS_DIR): Migration[] {
+export function loadMigrations(dir: string = resolveMigrationsDir()): Migration[] {
 	const files = readdirSync(dir)
 		.filter((f) => f.endsWith('.sql'))
 		.sort();

@@ -15,7 +15,7 @@
  */
 import type { ItemAllergenSummary } from '../allergens/verdict.ts';
 import type { Db } from '../db/driver.ts';
-import { mealSort } from '../time.ts';
+import { mealSort } from '../../dates.ts';
 import { getAllergenSelection, getItemVerdicts, type AllergenSelection } from './allergens.ts';
 import { placeholders } from './sql.ts';
 import {
@@ -57,6 +57,7 @@ export interface MealView {
 	menuId: number;
 	meal: string;
 	mealSort: number;
+	/** Items actually returned, which is what a heading should count. */
 	itemCount: number;
 	categories: CategoryView[];
 }
@@ -86,6 +87,14 @@ export interface ScopeParams {
 	userId?: number | null;
 	/** Pre-resolved selection, so a page rendering several scopes loads it once. */
 	selection?: AllergenSelection[];
+	/**
+	 * Show only dishes carrying ALL of these diet trait slugs.
+	 *
+	 * Applied to items, not menus: a venue keeps its meals and categories even
+	 * when nothing in them matches, because an empty category under a filter is
+	 * information ("nothing vegan on the grill today") and a vanished one is not.
+	 */
+	diets?: string[];
 }
 
 interface MenuRow {
@@ -198,9 +207,22 @@ export function getMenusForScope(db: Db, params: ScopeParams): ScopeResult {
 		traitsByItem.set(row.menu_item_id, bucket);
 	}
 
+	// Diet filtering happens here rather than in SQL: the trait rows are already
+	// loaded, and doing it in the query would need a HAVING over a join that the
+	// allergen pass then has to repeat.
+	const diets = params.diets ?? [];
+	const matchesDiet = (menuItemId: number) => {
+		if (diets.length === 0) return true;
+		const traits = traitsByItem.get(menuItemId);
+		if (!traits) return false;
+		return diets.every((slug) => traits.some((t) => t.slug === slug));
+	};
+
 	// Group into menu -> category -> item, preserving the SQL ordering.
 	const categoriesByMenu = new Map<number, Map<number, CategoryView>>();
 	for (const row of itemRows) {
+		if (!matchesDiet(row.menu_item_id)) continue;
+
 		let categories = categoriesByMenu.get(row.menu_id);
 		if (!categories) {
 			categories = new Map();
@@ -229,12 +251,16 @@ export function getMenusForScope(db: Db, params: ScopeParams): ScopeResult {
 	const menusByUnit = new Map<number, MealView[]>();
 	for (const menu of menuRows) {
 		const bucket = menusByUnit.get(menu.unit_id) ?? [];
+		const categories = [...(categoriesByMenu.get(menu.menu_id)?.values() ?? [])];
 		bucket.push({
 			menuId: menu.menu_id,
 			meal: menu.meal,
 			mealSort: menu.meal_sort,
-			itemCount: menu.item_count,
-			categories: [...(categoriesByMenu.get(menu.menu_id)?.values() ?? [])]
+			// Counted from what is being returned, not from menu.item_count: under
+			// a diet filter the stored total would over-report, and a heading that
+			// says 14 items above 3 rows is worse than no heading.
+			itemCount: categories.reduce((sum, c) => sum + c.items.length, 0),
+			categories
 		});
 		menusByUnit.set(menu.unit_id, bucket);
 	}
@@ -260,7 +286,16 @@ export function getMenusForScope(db: Db, params: ScopeParams): ScopeResult {
 		root,
 		venues: venueViews,
 		meals: mealNames,
-		itemCount: itemRows.length
+		// Post-filter, so the heading counts what is actually on screen.
+		itemCount: venueViews.reduce(
+			(sum, v) =>
+				sum +
+				v.meals.reduce(
+					(mealSum, m) => mealSum + m.categories.reduce((c, cat) => c + cat.items.length, 0),
+					0
+				),
+			0
+		)
 	};
 }
 

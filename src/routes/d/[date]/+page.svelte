@@ -1,6 +1,6 @@
 <script lang="ts">
 	import DateStrip from '$lib/components/DateStrip.svelte';
-	import { formatCampusDate } from '$lib/server/time';
+	import { formatCampusDate } from '$lib/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

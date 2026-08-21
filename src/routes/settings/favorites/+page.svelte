@@ -1,7 +1,7 @@
 <script lang="ts">
 	import CircleDashed from '@lucide/svelte/icons/circle-dashed';
 	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-	import { formatCampusDate } from '$lib/server/time';
+	import { formatCampusDate } from '$lib/dates';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();

@@ -10,7 +10,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getDateRange, getUnitsServingOn } from '$lib/server/queries/menus';
 import { getUnitStatuses, getUnitTree } from '$lib/server/queries/units';
-import { campusToday } from '$lib/server/time';
+import { campusToday } from '$lib/dates';
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getAllergenSelection, getDietTags } from '$lib/server/queries/allergens';
 import { searchItems } from '$lib/server/queries/search';
-import { campusToday } from '$lib/server/time';
+import { campusToday } from '$lib/dates';
 
 export const load: PageServerLoad = ({ url, locals }) => {
 	const db = getDb();

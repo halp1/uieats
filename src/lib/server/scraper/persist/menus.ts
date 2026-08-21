@@ -16,7 +16,7 @@
  */
 import { matchItemName } from '../../allergens/match.ts';
 import type { Db } from '../../db/driver.ts';
-import { mealSort } from '../../time.ts';
+import { mealSort } from '../../../dates.ts';
 import type { ParsedItemPanel } from '../parse/item-panel.ts';
 import { normalizeItemName, normalizeServingSize, slugify } from '../parse/text.ts';
 

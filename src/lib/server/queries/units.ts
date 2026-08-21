@@ -9,7 +9,7 @@
  * lets one route render both.
  */
 import type { Db } from '../db/driver.ts';
-import { weekdayOf } from '../time.ts';
+import { weekdayOf } from '../../dates.ts';
 
 export interface UnitRef {
 	id: number;

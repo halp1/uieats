@@ -1,7 +1,7 @@
 /** The root is always "today on campus", never a landing page. */
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { campusToday } from '$lib/server/time';
+import { campusToday } from '$lib/dates';
 
 export const load: PageServerLoad = () => {
 	// campusToday(), not the server's date: a UTC host would send everyone to

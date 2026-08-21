@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { startAuthentication } from '@simplewebauthn/browser';
 	import { goto } from '$app/navigation';
-	import { ELIGIBLE_DOMAIN_LABEL } from '$lib/server/auth/email';
+	import { ELIGIBLE_DOMAIN_LABEL } from '$lib/policy';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();

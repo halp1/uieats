@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { startRegistration } from '@simplewebauthn/browser';
 	import { invalidateAll } from '$app/navigation';
-	import { describeAge } from '$lib/server/time';
+	import { describeAge } from '$lib/dates';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();

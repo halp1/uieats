@@ -9,7 +9,7 @@
 	fortnight, which fits on a strip, and a strip is one tap instead of three.
 -->
 <script lang="ts">
-	import { addDays, formatCampusDate } from '$lib/server/time';
+	import { addDays, formatCampusDate } from '$lib/dates';
 
 	let {
 		date,

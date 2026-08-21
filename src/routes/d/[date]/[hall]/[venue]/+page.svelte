@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import DateStrip from '$lib/components/DateStrip.svelte';
+	import DietFilter from '$lib/components/DietFilter.svelte';
 	import VenueMenu from '$lib/components/VenueMenu.svelte';
-	import { formatCampusDate, formatClock } from '$lib/server/time';
+	import { formatCampusDate, formatClock } from '$lib/dates';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -14,7 +16,7 @@
 	<title>{data.venue.name} — {formatCampusDate(data.date)} — uieats</title>
 </svelte:head>
 
-<DateStrip date={data.date} today={data.today} href={(d) => `/d/${d}/${path}`} />
+<DateStrip date={data.date} today={data.today} href={(d) => `/d/${d}/${path}${page.url.search}`} />
 
 <nav class="mt-4 mb-1 flex gap-2 text-xs">
 	<a href="/d/{data.date}" class="text-ink-faint hover:underline">All locations</a>
@@ -26,6 +28,8 @@
 
 <h1 class="display text-3xl">{data.venue.name}</h1>
 <p class="eyebrow mt-1">{formatCampusDate(data.date)}</p>
+
+<DietFilter tags={data.dietTags} active={data.diets} url={page.url} />
 
 {#if view}
 	<!--
@@ -63,8 +67,15 @@
 					may not be posted yet.
 				</p>
 			</div>
+		{:else if data.scope.itemCount === 0 && data.diets.length > 0}
+			<div class="border-2 border-ink p-4">
+				<h2 class="mb-1 font-bold">Nothing here matches those diet filters</h2>
+				<p class="text-sm leading-relaxed text-ink-muted">
+					This venue has a menu today, but no dish carries every tag you picked.
+				</p>
+			</div>
 		{:else}
-			<VenueMenu venue={view} showHeading={false} />
+			<VenueMenu venue={view} showHeading={false} filtered={data.diets.length > 0} />
 		{/if}
 	</div>
 {/if}
