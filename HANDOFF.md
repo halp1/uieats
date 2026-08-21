@@ -108,8 +108,7 @@ item SET name_checked_at = NULL` is the intended way to force it; there is no
 ## Things that will bite you
 
 All of these are encoded in tests, so you will only meet them if you change the
-relevant code. The first eight are inherited and still true; the last four are
-new.
+relevant code. The first eight are inherited and still true; the rest are new.
 
 1. **`Accept-Language` must be a real language tag.** undici defaults it to `*`;
    this ASP.NET app parses that as a culture, throws, and serves its
@@ -149,6 +148,25 @@ new.
 13. **`deactivateUnitsNotSeen` is guarded on `!onlyUnits && errors === 0`.** A
     `--unit=1` run legitimately never sees the other eleven units, and a unit
     missed to a timeout is not a unit that closed. Both guards have a test.
+14. **An oid can be negative.** Upstream marks a course with no name using the
+    sentinel `toggleCourseItems(this, -1234)`, labelled `None`. `extractOid`'s
+    pattern was `(\d+)`, which returns `null` for it — so the heading never
+    arrived and persistence dropped every dish underneath. Fixed, fixtured
+    (`itempanel-nocategory.json`) and tested, but the shape of the mistake is
+    the lesson: a parser that cannot read a value fails _silently_ here, and the
+    only symptom is food missing from a menu.
+15. **`menu_item` identity is `(menu_id, nn_detail_oid)`, not the dish name.**
+    One menu can list the same name twice, same course, same serving size, as
+    two different products with different allergens — upstream distinguishes
+    them by `detailOid` alone. Keying on the name collapsed them and kept
+    whichever came last in the markup. `item` remains the canonical DISH
+    registry; two instances of one dish share an `item_id`.
+16. **Compare against the live site, not against the parsers.** Both bugs above
+    passed every test in the repo and were invisible in the database. They only
+    showed up as a count mismatch against upstream. There is an audit script
+    pattern for this in the session history worth rebuilding if numbers ever
+    look off: walk every venue, parse each menu, and diff parsed-item-count
+    against stored-item-count.
 
 ---
 

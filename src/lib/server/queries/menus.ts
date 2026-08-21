@@ -50,6 +50,16 @@ export interface MenuItemView {
 export interface CategoryView {
 	id: number;
 	name: string;
+	/**
+	 * True when upstream gave this course no name.
+	 *
+	 * It marks an unnamed course with the sentinel id -1234 and the literal
+	 * label "None", and persistence synthesizes an empty name if a heading is
+	 * missing entirely. Either way the items are real and the heading is not, so
+	 * the UI shows the dishes without one -- a category called "None" reads as a
+	 * bug, and dropping the dishes to avoid it would be far worse.
+	 */
+	isUncategorised: boolean;
 	items: MenuItemView[];
 }
 
@@ -109,6 +119,7 @@ interface ItemRow {
 	menu_id: number;
 	category_id: number;
 	category_name: string;
+	nn_category_id: number;
 	category_sort: number;
 	menu_item_id: number;
 	item_id: number;
@@ -162,7 +173,8 @@ export function getMenusForScope(db: Db, params: ScopeParams): ScopeResult {
 			? []
 			: db
 					.prepare<ItemRow>(
-						`SELECT mi.menu_id, mc.id AS category_id, mc.name AS category_name, mc.sort AS category_sort,
+						`SELECT mi.menu_id, mc.id AS category_id, mc.name AS category_name,
+						        mc.nn_category_id, mc.sort AS category_sort,
 						        mi.id AS menu_item_id, i.id AS item_id, i.slug, i.name_display,
 						        mi.serving_size, mi.sort, mi.label_fetched_at, nf.calories
 						 FROM menu_item mi
@@ -230,7 +242,13 @@ export function getMenusForScope(db: Db, params: ScopeParams): ScopeResult {
 		}
 		let category = categories.get(row.category_id);
 		if (!category) {
-			category = { id: row.category_id, name: row.category_name, items: [] };
+			category = {
+				id: row.category_id,
+				name: row.category_name,
+				isUncategorised:
+					row.nn_category_id < 0 || row.category_name.trim() === '' || row.category_name === 'None',
+				items: []
+			};
 			categories.set(row.category_id, category);
 		}
 

@@ -205,6 +205,15 @@
 					</a>
 					<span class="tabular font-mono text-[0.6875rem] text-ink-faint">
 						{formatCampusDate(a.date)} · {a.meal}
+						<!--
+							The serving size is here because one menu can list this dish
+							TWICE as two different products -- upstream tells them apart by
+							detail oid alone. Without something on the row, two genuinely
+							distinct servings read as a duplicated line.
+						-->
+						{#if a.servingSize}
+							· {a.servingSize}
+						{/if}
 						{#if !a.hasLabel}
 							· <span class="font-semibold">unverified</span>
 						{/if}
@@ -213,8 +222,9 @@
 			{/each}
 		</ul>
 		<p class="mt-2 text-xs leading-relaxed text-ink-faint">
-			Each serving carries its own label. The same dish name at a different venue can be a different
-			recipe, so allergens are never merged across appearances.
+			Each serving carries its own label. The same dish name can be a different recipe at a
+			different venue — or even twice on one menu, from two suppliers — so allergens are never
+			merged across appearances.
 		</p>
 	</section>
 {/if}

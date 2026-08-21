@@ -124,28 +124,42 @@ export function persistMenu(
 		const menuId = upsertMenu(db, identity, panel.header.venue, now);
 
 		const categoryIds = new Map<number, number>();
-		for (const category of panel.categories) {
-			db.prepare(
-				`INSERT INTO menu_category (menu_id, nn_category_id, name, sort, scrape_run_id)
-				 VALUES (?, ?, ?, ?, ?)
-				 ON CONFLICT(menu_id, nn_category_id)
-				 DO UPDATE SET name = excluded.name, sort = excluded.sort, scrape_run_id = excluded.scrape_run_id`
-			).run(menuId, category.nnCategoryId, category.name, category.sort, runId);
-
+		const upsertCategory = (nnCategoryId: number, name: string, sort: number): number => {
 			const row = db
 				.prepare<{ id: number }>(
-					'SELECT id FROM menu_category WHERE menu_id = ? AND nn_category_id = ?'
+					`INSERT INTO menu_category (menu_id, nn_category_id, name, sort, scrape_run_id)
+					 VALUES (?, ?, ?, ?, ?)
+					 ON CONFLICT(menu_id, nn_category_id)
+					 DO UPDATE SET name = excluded.name, sort = excluded.sort,
+					               scrape_run_id = excluded.scrape_run_id
+					 RETURNING id`
 				)
-				.get(menuId, category.nnCategoryId);
-			if (row) categoryIds.set(category.nnCategoryId, row.id);
+				.get(menuId, nnCategoryId, name, sort, runId);
+			if (!row) throw new Error(`menu_category upsert returned no row for ${nnCategoryId}`);
+			categoryIds.set(nnCategoryId, row.id);
+			return row.id;
+		};
+
+		for (const category of panel.categories) {
+			upsertCategory(category.nnCategoryId, category.name, category.sort);
 		}
 
 		let itemsUpserted = 0;
 		for (const item of panel.items) {
-			const categoryId = categoryIds.get(item.nnCategoryId);
-			// An item whose category heading never appeared would violate the FK.
-			// Skipping keeps the rest of the menu rather than losing all of it.
-			if (categoryId === undefined) continue;
+			// An item whose course heading never appeared would violate the FK, so
+			// one is synthesized rather than dropping the dish.
+			//
+			// This used to `continue`, and that silently lost food off menus:
+			// upstream marks an unnamed course with the sentinel id -1234, the oid
+			// regex could not read a negative number, so the heading never arrived
+			// and every dish under it vanished. The parser is fixed, but a dish
+			// disappearing from a menu is not something this app should be capable
+			// of doing quietly, whatever upstream invents next. The name is left
+			// empty because we genuinely do not know it; the UI reads that, and a
+			// negative id, as "no course given".
+			const categoryId =
+				categoryIds.get(item.nnCategoryId) ??
+				upsertCategory(item.nnCategoryId, '', panel.categories.length);
 
 			const itemId = upsertItem(db, item.name, now);
 			const servingNorm = normalizeServingSize(item.servingSize);
@@ -153,32 +167,39 @@ export function persistMenu(
 			// nutrition_fact_id and label_fetched_at are intentionally NOT touched
 			// here: re-scraping a menu must not discard labels already fetched, or
 			// the backfill would restart from zero every night.
-			db.prepare(
-				`INSERT INTO menu_item (menu_id, category_id, item_id, nn_detail_oid, serving_size, serving_size_norm, sort, scrape_run_id)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-				 ON CONFLICT(menu_id, category_id, item_id, COALESCE(serving_size_norm, ''))
-				 DO UPDATE SET nn_detail_oid = excluded.nn_detail_oid,
-				               serving_size  = excluded.serving_size,
-				               sort          = excluded.sort,
-				               scrape_run_id = excluded.scrape_run_id`
-			).run(
-				menuId,
-				categoryId,
-				itemId,
-				item.detailOid,
-				item.servingSize,
-				servingNorm,
-				item.sort,
-				runId
-			);
-
+			// Identity is (menu_id, nn_detail_oid) -- the INSTANCE. Keying on the
+			// dish name and serving size instead collapsed two genuinely different
+			// products that upstream lists under one name, and the survivor was
+			// whichever came last in the markup. See 0005_menu_item_identity.sql:
+			// every collision observed lost a real allergen difference.
+			//
+			// category_id and item_id are updated too, so a dish moving course or
+			// being renamed upstream follows the same instance rather than
+			// orphaning a row.
 			const menuItem = db
 				.prepare<{ id: number }>(
-					`SELECT id FROM menu_item
-					 WHERE menu_id = ? AND category_id = ? AND item_id = ? AND COALESCE(serving_size_norm, '') = ?`
+					`INSERT INTO menu_item (menu_id, category_id, item_id, nn_detail_oid, serving_size, serving_size_norm, sort, scrape_run_id)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+					 ON CONFLICT(menu_id, nn_detail_oid)
+					 DO UPDATE SET category_id       = excluded.category_id,
+					               item_id           = excluded.item_id,
+					               serving_size      = excluded.serving_size,
+					               serving_size_norm = excluded.serving_size_norm,
+					               sort              = excluded.sort,
+					               scrape_run_id     = excluded.scrape_run_id
+					 RETURNING id`
 				)
-				.get(menuId, categoryId, itemId, servingNorm);
-			if (!menuItem) continue;
+				.get(
+					menuId,
+					categoryId,
+					itemId,
+					item.detailOid,
+					item.servingSize,
+					servingNorm,
+					item.sort,
+					runId
+				);
+			if (!menuItem) throw new Error(`menu_item upsert returned no row for ${item.detailOid}`);
 			itemsUpserted++;
 
 			// Trait sets are tiny (<= 8) and can shrink, so replace wholesale

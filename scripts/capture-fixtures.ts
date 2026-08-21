@@ -147,6 +147,26 @@ save(`label-${detailOids[0]}.html`, label);
 // Hours of operation (raw HTML, not a JSON envelope).
 save('hours-unit-5.html', await post('Unit/GetHoursOfOperationMarkup', { unitOid: 5 }));
 
+// A menu carrying upstream's UNNAMED course. It marks one with the sentinel
+// category id -1234 and the literal label "None". A digits-only oid pattern read
+// that as null, so the heading vanished and every dish under it was dropped --
+// so this fixture exists to keep that from coming back. Saporito Pizza's lunch
+// had it; any menu whose panel contains "-1234" will do.
+let noCategoryFound = false;
+for (const unitOid of [18, 17, 2, 5]) {
+	const list = await post('Unit/SelectUnitFromChildUnitsList', { unitOid });
+	for (const menuOid of oids(panels(list).menuPanel ?? '', 'menuListSelectMenu').slice(0, 12)) {
+		const res = await post('Menu/SelecUnitAndtMenu', { unitOid, menuOid });
+		if ((panels(res).itemPanel ?? '').includes('-1234')) {
+			save('itempanel-nocategory.json', res);
+			noCategoryFound = true;
+			break;
+		}
+	}
+	if (noCategoryFound) break;
+}
+if (!noCategoryFound) console.log('  (no unnamed course found; keep the existing fixture)');
+
 // A menu with no items at all -- the empty-state path.
 let emptyFound = false;
 for (const unitOid of [2, 5, 3, 4, 6]) {

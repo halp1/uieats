@@ -23,6 +23,8 @@ hand. Do not run capture in CI.
 | `itempanel-1440351.json`           | same, `menuOid=1440351`                              | A second date at the same venue. Contains `White Chocolate Macadamia Nut Cookie`, declared only as `Tree Nuts`                                                                        |
 | `label-122098028.html`             | `NutritionDetail/ShowItemNutritionLabel`             | Raw HTML despite the JSON-looking siblings. Carries the `NA` trans-fat trap, an empty Vitamin A cell, `< 1g` fibre, six sub-recipe components, and the authoritative `Contains:` line |
 
+| `itempanel-nocategory.json`        | `Menu/SelecUnitAndtMenu` `unitOid=18` `menuOid=1440624` | Upstream's **unnamed course**: a real group row labelled `None` with the sentinel category id **-1234**. A digits-only oid pattern read that as `null`, so the heading was skipped and both dishes under it (`Cocktail Sauce`, `Fried Popcorn Shrimp`) were silently dropped from the menu |
+
 ## Synthesized, not captured
 
 | File                   | Provenance                                                                                                                                                                                                                                                                                        |
