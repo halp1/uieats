@@ -123,3 +123,28 @@ describe('a menu with no items', () => {
 		expect(panel.items).toEqual([]);
 	});
 });
+
+describe('a course upstream gave no name', () => {
+	// Captured live from Saporito Pizza. Upstream emits a real group row for it,
+	// labelled "None", with the sentinel id -1234 -- and two dishes underneath.
+	// Those dishes used to disappear entirely.
+	const panel = parseItemPanel(fixturePanel('itempanel-nocategory.json', 'itemPanel'));
+
+	it('parses the sentinel course as a category rather than skipping it', () => {
+		const none = panel.categories.find((c) => c.nnCategoryId === -1234);
+		expect(none, 'the -1234 course was dropped again').toBeDefined();
+		expect(none!.name).toBe('None');
+	});
+
+	it('leaves no item without a course, which is what caused the data loss', () => {
+		const ids = new Set(panel.categories.map((c) => c.nnCategoryId));
+		const orphans = panel.items.filter((i) => !ids.has(i.nnCategoryId));
+		expect(orphans.map((o) => o.name)).toEqual([]);
+	});
+
+	it('keeps the dishes that sit under it', () => {
+		const under = panel.items.filter((i) => i.nnCategoryId === -1234).map((i) => i.name);
+		expect(under).toContain('Cocktail Sauce');
+		expect(under).toContain('Fried Popcorn Shrimp');
+	});
+});

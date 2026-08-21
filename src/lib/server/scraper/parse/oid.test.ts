@@ -56,3 +56,41 @@ describe('extractOids', () => {
 		expect(extractOids('<div>nothing here</div>', 'menuListSelectMenu')).toEqual([]);
 	});
 });
+
+describe('signed ids', () => {
+	// Upstream marks a course group with no name using the sentinel -1234. A
+	// digits-only pattern returned null for it, the heading was skipped, and
+	// persistence then dropped every dish underneath -- food silently missing
+	// from a menu in an allergen app. Real oids are positive; this only has to
+	// not lose the sign.
+	it('reads the negative course sentinel', () => {
+		expect(
+			extractOid('NetNutrition.UI.toggleCourseItems(this, -1234);', 'toggleCourseItems', 1)
+		).toBe(-1234);
+	});
+
+	it('still reads a normal positive course id', () => {
+		expect(extractOid('NetNutrition.UI.toggleCourseItems(this, 12);', 'toggleCourseItems', 1)).toBe(
+			12
+		);
+	});
+
+	it('does not invent a number where there is none', () => {
+		expect(
+			extractOid('NetNutrition.UI.toggleCourseItems(this, x);', 'toggleCourseItems', 1)
+		).toBeNull();
+		expect(
+			extractOid('NetNutrition.UI.toggleCourseItems(this, -);', 'toggleCourseItems', 1)
+		).toBeNull();
+	});
+
+	it('collects signed ids too', () => {
+		expect(
+			extractOids(
+				'toggleCourseItems(this, -1234); toggleCourseItems(this, 9);',
+				'toggleCourseItems',
+				1
+			)
+		).toEqual([-1234, 9]);
+	});
+});

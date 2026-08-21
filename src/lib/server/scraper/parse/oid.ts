@@ -21,7 +21,13 @@ function patternFor(fnName: string, argIndex: number): RegExp {
 		// `childUnitsSelectUnit` does not satisfy a request for
 		// `unitsSelectUnit` -- a real collision in this API.
 		const skipped = '\\s*[^,()]*,'.repeat(argIndex);
-		re = new RegExp(`(?<!\\w)${fnName}\\s*\\(${skipped}\\s*(\\d+)\\s*[,)]`, 'g');
+		// The sign is not optional decoration. Upstream marks a course group that
+		// has no name with the sentinel id -1234
+		// (`toggleCourseItems(this, -1234)`), and a digits-only pattern returns
+		// null for it -- which made every dish under that heading disappear,
+		// because persistence drops items whose category it never saw. Real oids
+		// are positive; callers that need that guarantee check it themselves.
+		re = new RegExp(`(?<!\\w)${fnName}\\s*\\(${skipped}\\s*(-?\\d+)\\s*[,)]`, 'g');
 		cache.set(key, re);
 	}
 	re.lastIndex = 0;

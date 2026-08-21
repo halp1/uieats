@@ -155,7 +155,13 @@
 
 			{#each meal.categories as category (category.id)}
 				<div class="mt-4">
-					<h4 class="eyebrow rule-hair pb-0.5">{category.name}</h4>
+					{#if category.isUncategorised}
+						<!-- Upstream gave this course no name. A hairline still separates
+						     it from the course above; there is just nothing to call it. -->
+						<div class="rule-hair"></div>
+					{:else}
+						<h4 class="eyebrow rule-hair pb-0.5">{category.name}</h4>
+					{/if}
 					<ul>
 						{#each category.items as item (item.menuItemId)}
 							<ItemRow {item} hoisted={hoisted.map((h) => h.slug)} />
