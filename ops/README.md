@@ -2,6 +2,9 @@
 
 Two processes, one database, and one rule: **the web process never scrapes.**
 
+> Deploying to Coolify? Read `../DEPLOY.md` instead — same rule, but containers
+> move where the volume, the cron and the `ORIGIN` setting live.
+
 ```
 adapter-node ──reads──┐
                       ├── data/uieats.db  (WAL, local disk)
