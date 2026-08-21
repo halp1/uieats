@@ -143,19 +143,6 @@ export function getAllergenSelection(db: Db, userId: number | null): AllergenSel
 	return [...out.values()];
 }
 
-/** What a user's diet filter selects, if they set one. */
-export function getDietSelection(db: Db, userId: number | null): AllergenRef[] {
-	if (userId === null) return [];
-	return db
-		.prepare<AllergenRow>(
-			`SELECT a.id, a.slug, a.label, a.kind, a.covered_by_trait_vocabulary, a.parent_id, a.sort
-			 FROM user_allergen ua JOIN allergen a ON a.id = ua.allergen_id
-			 WHERE ua.user_id = ? AND a.kind = 'diet' ORDER BY a.sort`
-		)
-		.all(userId)
-		.map(toRef);
-}
-
 interface FactRow {
 	menu_item_id: number;
 	item_id: number;
@@ -205,8 +192,11 @@ export function getItemVerdicts(
 	// that exists before any label has been fetched.
 	const traitRows = selectByIds<EvidenceRow>(
 		db,
+		// The evidence string is a sentence, not a label: it is shown verbatim as
+		// the reason for a warning, and "Fish" on its own explains nothing.
 		(list) => `SELECT mit.menu_item_id, ta.allergen_id, a.slug, a.label,
-		                  'trait' AS source, t.label AS evidence
+		                  'trait' AS source,
+		                  'Tagged ' || t.label || ' on the university''s menu row' AS evidence
 		           FROM menu_item_trait mit
 		           JOIN trait t ON t.id = mit.trait_id
 		           JOIN trait_allergen ta ON ta.trait_id = t.id

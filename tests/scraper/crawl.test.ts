@@ -42,6 +42,63 @@ beforeEach(() => {
 	clock = 1_000_000;
 });
 
+describe('deactivating units that vanished upstream', () => {
+	// A venue closing for the term is marked inactive rather than deleted: menus
+	// reference it, and its history is still true. But the sweep is destructive
+	// enough that the guards matter more than the behaviour.
+	it('leaves other units alone on a scoped run', async () => {
+		// `--unit=1` legitimately never sees the other eleven. Sweeping here would
+		// empty the site every time someone iterated on one hall.
+		await runScrape(db, new FakeTransport({ routes: ROUTES }), CONFIG, {
+			onlyUnits: [1],
+			today: TODAY,
+			now,
+			skipLabels: true,
+			skipHours: true
+		});
+		await runScrape(db, new FakeTransport({ routes: ROUTES }), CONFIG, {
+			onlyUnits: [32],
+			today: TODAY,
+			now,
+			skipLabels: true,
+			skipHours: true
+		});
+
+		// Unit 1 was not seen by the second run, and must still be active.
+		const ike = db
+			.prepare<{ is_active: number }>('SELECT is_active FROM unit WHERE nn_oid = 1')
+			.get();
+		expect(ike?.is_active).toBe(1);
+	});
+
+	it('leaves everything alone on a run that had errors', async () => {
+		// A unit missed to a timeout is not a unit that closed. One transient
+		// failure must never take a hall off the site.
+		await runScrape(db, new FakeTransport({ routes: ROUTES }), CONFIG, {
+			onlyUnits: [1],
+			today: TODAY,
+			now,
+			skipLabels: true,
+			skipHours: true
+		});
+
+		const summary = await runScrape(
+			db,
+			// Unit 33 is in the landing list but has no fixture, so its phase-A
+			// probe fails -- which is what a timeout against a live unit looks like.
+			new FakeTransport({ routes: ROUTES }),
+			CONFIG,
+			{ onlyUnits: [1, 33], today: TODAY, now, skipLabels: true, skipHours: true }
+		);
+		expect(summary.errorCount).toBeGreaterThan(0);
+
+		const active = db
+			.prepare<{ c: number }>('SELECT COUNT(*) AS c FROM unit WHERE is_active = 1')
+			.get();
+		expect(active?.c).toBe(10); // Ike plus its nine venues
+	});
+});
+
 describe('runScrape unit discovery', () => {
 	it('classifies a hall by its childUnitsPanel and records its venues', async () => {
 		const transport = new FakeTransport({ routes: ROUTES });

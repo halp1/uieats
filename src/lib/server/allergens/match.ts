@@ -185,9 +185,13 @@ const HIDDEN_SOURCE_TERMS = [
 	'spice blend',
 	'seasoning',
 	'seasoning blend',
-	'modified food starch',
-	'vegetable oil',
-	'mono and diglycerides'
+	'modified food starch'
+	// Deliberately NOT here: 'vegetable oil' and 'mono and diglycerides'. Both
+	// appear on nearly every processed label, and both name what they are -- they
+	// are a question about SOURCE (animal or plant), which matters for a diet but
+	// is not an allergen hiding behind a collective term. Including them fired
+	// the advisory on almost every dish, which is how an advisory stops being
+	// read at all.
 ];
 
 /** The umbrella terms present in a label's ingredient prose, as written. */

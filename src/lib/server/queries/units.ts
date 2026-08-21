@@ -80,11 +80,6 @@ export function getUnitBySlug(
 	return row ? toRef(row) : null;
 }
 
-export function getUnitById(db: Db, id: number): UnitRef | null {
-	const row = db.prepare<UnitRow>(`SELECT ${UNIT_COLUMNS} FROM unit WHERE id = ?`).get(id);
-	return row ? toRef(row) : null;
-}
-
 /**
  * The venues a scope covers.
  *

@@ -42,7 +42,7 @@ import {
 	persistLabel,
 	reuseLabelForMatchingItems
 } from '../persist/nutrition.ts';
-import { recordUnitStatus, upsertUnit } from '../persist/units.ts';
+import { deactivateUnitsNotSeen, recordUnitStatus, upsertUnit } from '../persist/units.ts';
 import type { Transport } from '../transport/client.ts';
 
 export interface RunOptions {
@@ -95,9 +95,10 @@ export async function runScrape(
 	const from = addDays(today, -config.daysBehind);
 	const to = addDays(today, options.daysAhead ?? config.daysAhead);
 
+	const runStartedAt = now();
 	const runId = db
 		.prepare("INSERT INTO scrape_run (kind, started_at, status) VALUES ('full', ?, 'running')")
-		.run(now()).lastInsertRowid;
+		.run(runStartedAt).lastInsertRowid;
 
 	let errors = 0;
 	let attempts = 0;
@@ -191,6 +192,19 @@ export async function runScrape(
 		}
 		summary.unitsSeen = venues.length;
 		log(`venues: ${venues.length}`);
+
+		// A venue that has closed for the term stops appearing upstream. It is
+		// marked inactive rather than deleted, because menus reference it and its
+		// history is still true.
+		//
+		// Guarded on BOTH conditions, and the guard is the whole point: a
+		// `--unit=1` run legitimately never sees the other eleven units, and a run
+		// with errors may have missed a unit to a timeout. Sweeping in either case
+		// would empty the site over a transient failure.
+		if (!options.onlyUnits && errors === 0) {
+			const deactivated = deactivateUnitsNotSeen(db, runStartedAt);
+			if (deactivated > 0) log(`  units no longer listed upstream: ${deactivated}`);
+		}
 
 		// ---- Phase B: menu lists --------------------------------------------
 		const work: { venue: Venue; menu: ParsedMenuRef }[] = [];

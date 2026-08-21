@@ -80,17 +80,21 @@
 							{#if verdict.evidence.length > 1}
 								<ul class="mt-1 space-y-0.5">
 									{#each verdict.evidence.slice(1) as e (e.source + e.slug)}
+										<!-- The evidence string names its own source, so a
+										     "{source}:" prefix here would double it. -->
 										<li class="font-mono text-[0.6875rem] text-ink-faint">
-											also {e.source}: {e.text}
+											also — {e.text}
 										</li>
 									{/each}
 								</ul>
 							{/if}
-							{#if verdict.advisory}
-								<p class="mt-1 border-l-2 border-rule pl-2 text-[0.6875rem] text-ink-muted">
-									{verdict.advisory}
-								</p>
-							{/if}
+							<!--
+								verdict.advisory is deliberately NOT rendered here. It is a
+								property of the label, not of each allergen, so on a page
+								showing five verdicts it would print the same sentence five
+								times. The Ingredients section below states it once, where the
+								terms themselves are visible.
+							-->
 						</div>
 					</li>
 				{/each}
@@ -178,7 +182,8 @@
 			{#if shown.nutrition?.hiddenSources.length}
 				<p class="mt-3 border-l-2 border-ink pl-2 text-xs leading-relaxed text-ink-muted">
 					This list uses umbrella terms — {shown.nutrition.hiddenSources.join(', ')} — which are allowed
-					to stand in for ingredients they do not name. An allergen can hide inside one.
+					to stand in for ingredients they do not name. An allergen can hide inside one, so every grey
+					chip above is weaker than it looks.
 				</p>
 			{/if}
 		</div>
