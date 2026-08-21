@@ -102,6 +102,12 @@ node scripts/capture-fixtures.ts          # re-capture upstream; never in CI
 node scripts/write-fixture-manifest.ts    # after re-capturing
 ```
 
+## Deploying
+
+`DEPLOY.md` covers Coolify specifically, with a `Dockerfile` in the repo.
+`ops/README.md` covers a plain host with systemd or cron. Both start from the
+same rule: the web process never scrapes.
+
 ## Etiquette
 
 3 concurrent requests, ≥150 ms apart (~6 req/s), an identifying User-Agent, and

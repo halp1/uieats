@@ -1,0 +1,32 @@
+# Kept deliberately short. The runtime image needs the source tree (the scraper
+# CLI is type-stripped at load, and the migrator reads .sql off disk), so this
+# excludes only what is genuinely useless in an image.
+
+.git
+.github
+node_modules
+.svelte-kit
+build
+coverage
+
+# The database is a mounted volume. Copying a local one into the image would
+# ship your dev accounts and then be silently shadowed by the mount.
+data
+*.db
+*.db-wal
+*.db-shm
+
+# Secrets come from Coolify's environment, never from a layer.
+.env
+.env.*
+!.env.example
+
+# Tests, except the captured fixtures -- those are copied in so the persistence
+# stack can be proven without touching the university's server.
+tests/*
+!tests/fixtures
+!tests/fixtures/**
+
+.vscode
+.DS_Store
+*.log
