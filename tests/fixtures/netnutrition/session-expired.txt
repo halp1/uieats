@@ -1,0 +1,2 @@
+An expired session makes this endpoint redirect indefinitely.
+fetch() reports: Error: redirect count exceeded
