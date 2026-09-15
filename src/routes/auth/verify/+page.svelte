@@ -41,8 +41,8 @@
 			<a href="/auth/login" class="font-semibold text-ink underline">Request a new code</a>
 		{:else}
 			Nothing arrived?
-			<a href="/auth/login" class="font-semibold text-ink underline">Send another code</a>
-			— check your spam folder first, and that you typed the right address. You get
+			<a href="/auth/login" class="font-semibold text-ink underline">Send another code</a>. Check
+			your spam folder first, and that you typed the right address. You get
 			{data.maxAttempts} tries per code.
 		{/if}
 	</p>

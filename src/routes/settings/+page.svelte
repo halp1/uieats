@@ -9,7 +9,7 @@
 			title: 'Allergens and diet',
 			detail:
 				data.allergenCount === 0
-					? 'Nothing registered — no dish is being checked for you'
+					? 'Nothing registered, so no dish is being checked for you'
 					: `${data.allergenCount} allergen${data.allergenCount === 1 ? '' : 's'}${
 							data.dietCount > 0
 								? `, ${data.dietCount} diet filter${data.dietCount === 1 ? '' : 's'}`
@@ -29,7 +29,7 @@
 			title: 'Passkeys',
 			detail:
 				data.passkeyCount === 0
-					? 'None — you sign in by email code'
+					? 'None, so you sign in by email code'
 					: `${data.passkeyCount} passkey${data.passkeyCount === 1 ? '' : 's'}`
 		}
 	]);

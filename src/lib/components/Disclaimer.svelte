@@ -27,7 +27,7 @@
 			</li>
 			<li>
 				<strong class="font-semibold text-ink">A grey chip is not an all-clear.</strong>
-				It means nothing was found in whatever has been read so far — which for many dishes is only the
+				It means nothing was found in whatever has been read so far, which for many dishes is only the
 				menu row. Recipes change, labels lag, and a dish can be re-made with a different supplier the
 				same week.
 			</li>

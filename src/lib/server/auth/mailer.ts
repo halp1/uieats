@@ -29,7 +29,7 @@ function body(code: string): { subject: string; text: string; html: string } {
 		'',
 		`It works once and expires in ${minutes} minutes.`,
 		'',
-		'If you did not ask to sign in, you can ignore this — someone typed your',
+		'If you did not ask to sign in, you can ignore this. Someone typed your',
 		'address by mistake, and no account was created or changed.'
 	].join('\n');
 
@@ -37,7 +37,7 @@ function body(code: string): { subject: string; text: string; html: string } {
 	<p>Your uieats sign-in code is</p>
 	<p style="font-family:ui-monospace,monospace;font-size:32px;font-weight:700;letter-spacing:0.15em;margin:16px 0">${code}</p>
 	<p>It works once and expires in ${minutes} minutes.</p>
-	<p style="color:#525252;font-size:13px">If you did not ask to sign in, you can ignore this — someone typed your address by mistake, and no account was created or changed.</p>
+	<p style="color:#525252;font-size:13px">If you did not ask to sign in, you can ignore this. Someone typed your address by mistake, and no account was created or changed.</p>
 </div>`;
 
 	return { subject, text, html };

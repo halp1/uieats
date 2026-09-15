@@ -81,8 +81,8 @@
 				{#if data.lastUpdated === null}
 					No successful menu update recorded yet
 				{:else}
-					Menu data updated {freshness}{#if data.isStale}
-						&nbsp;— this is older than it should be, so treat it with suspicion{/if}
+					Menu data updated {freshness}{#if data.isStale}, which is older than it should be, so
+						treat it with suspicion{/if}
 				{/if}
 			</p>
 			<p class="font-mono text-[0.6875rem] text-ink-faint">Source: eatsmart.housing.illinois.edu</p>

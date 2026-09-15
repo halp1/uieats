@@ -36,7 +36,7 @@
 	{#if page.status === 404}
 		<p class="mt-3 text-sm leading-relaxed text-ink-muted">
 			Venue links are built from names the university publishes, and menus only run a couple of
-			weeks ahead — so an old bookmark or a distant date will both land here.
+			weeks ahead, so an old bookmark or a distant date will both land here.
 		</p>
 	{/if}
 

@@ -51,7 +51,7 @@ function parseTerms(raw: string, label: string): { terms: string[] } | { error: 
 	const tooShort = terms.filter((t) => t.length < MIN_TERM);
 	if (tooShort.length > 0) {
 		return {
-			error: `“${tooShort[0]}” is too short to search for — ${MIN_TERM} letters or more, or it will match half the ingredient list.`
+			error: `“${tooShort[0]}” is too short to search for. Use ${MIN_TERM} letters or more, or it will match half the ingredient list.`
 		};
 	}
 	if (terms.some((t) => !/[a-z]/.test(t))) {

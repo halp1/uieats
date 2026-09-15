@@ -149,7 +149,7 @@
 		</button>
 		{#if form?.saved}
 			<p class="text-sm font-semibold">
-				Saved — {form.count}
+				Saved. {form.count}
 				{form.count === 1 ? 'allergen' : 'allergens'} will be checked on every dish.
 			</p>
 		{/if}
@@ -221,7 +221,7 @@
 			</div>
 			<p class="mt-2 text-xs leading-relaxed text-ink-faint">
 				Leave the second box empty and the name is used. Give a comma-separated list when one word
-				will not find it — <span class="font-mono">nightshade</span> appears on no label, whereas
+				will not find it. <span class="font-mono">Nightshade</span> appears on no label, whereas
 				<span class="font-mono">tomato, potato, aubergine, paprika</span> does. At least
 				{data.limits.minTerm} letters each.
 			</p>
@@ -237,7 +237,7 @@
 	{/if}
 	{#if form && 'customAdded' in form && form.customAdded}
 		<p class="mt-4 text-sm font-semibold">
-			Added {form.customAdded} — looking for {form.terms?.join(', ')}.
+			Added {form.customAdded}. Looking for {form.terms?.join(', ')}.
 		</p>
 	{/if}
 	{#if form && 'customRemoved' in form && form.customRemoved}
@@ -259,8 +259,8 @@
 		<div class="flex flex-wrap items-baseline gap-2">
 			<dt class="chip chip-may-contain shrink-0">May contain Tree Nuts</dt>
 			<dd>
-				Upstream's own cross-contact advisory — shared equipment, not an ingredient. Only you can
-				say whether that is close enough to matter.
+				Upstream's own cross-contact advisory, about shared equipment rather than an ingredient.
+				Only you can say whether that is close enough to matter.
 			</dd>
 		</div>
 		<div class="flex flex-wrap items-baseline gap-2">
@@ -270,7 +270,7 @@
 		<div class="flex flex-wrap items-baseline gap-2">
 			<dt class="chip chip-unknown shrink-0">Celery unverified</dt>
 			<dd>
-				Nothing has been read that could have shown it — no label yet, and upstream never tags this
+				Nothing has been read that could have shown it: no label yet, and upstream never tags this
 				one. Not the same as absent.
 			</dd>
 		</div>

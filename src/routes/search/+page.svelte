@@ -74,7 +74,7 @@
 	-->
 	<p class="mt-4 border-l-2 border-ink pl-3 text-xs leading-relaxed text-ink-muted">
 		Dishes with a warning for your allergens are hidden. Dishes whose labels have not been read yet
-		are still shown, marked unverified — leaving them out would present "not checked" as "passed the
+		are still shown, marked unverified. Leaving them out would present "not checked" as "passed the
 		filter".
 	</p>
 {/if}
@@ -87,7 +87,7 @@
 			<h2 class="mb-1 font-bold">Nothing matching “{data.query}”</h2>
 			<p class="text-sm leading-relaxed text-ink-muted">
 				Search looks at dish names on menus from today onwards. Try a shorter word, or check a
-				nearer date — menus only run a couple of weeks ahead.
+				nearer date, since menus only run a couple of weeks ahead.
 			</p>
 		</div>
 	{:else}

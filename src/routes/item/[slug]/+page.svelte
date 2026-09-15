@@ -83,7 +83,7 @@
 										<!-- The evidence string names its own source, so a
 										     "{source}:" prefix here would double it. -->
 										<li class="font-mono text-[0.6875rem] text-ink-faint">
-											also — {e.text}
+											also: {e.text}
 										</li>
 									{/each}
 								</ul>
@@ -192,8 +192,8 @@
 						{shown.nutrition.mayContainText}
 					</p>
 					<p class="mt-2 text-xs leading-relaxed text-ink-muted">
-						Upstream's own words. These are not ingredients — they are allergens that may have
-						reached the dish through shared equipment. Whether that matters is your call, and it
+						Upstream's own words. These are allergens that may have reached the dish through shared
+						equipment, rather than ingredients in it. Whether that matters is your call, and it
 						depends on how severe your reaction is.
 					</p>
 				</div>
@@ -201,9 +201,9 @@
 
 			{#if shown.nutrition?.hiddenSources.length}
 				<p class="mt-3 border-l-2 border-ink pl-2 text-xs leading-relaxed text-ink-muted">
-					This list uses umbrella terms — {shown.nutrition.hiddenSources.join(', ')} — which are allowed
-					to stand in for ingredients they do not name. An allergen can hide inside one, so every grey
-					chip above is weaker than it looks.
+					This list uses umbrella terms ({shown.nutrition.hiddenSources.join(', ')}) that are
+					allowed to stand in for ingredients they do not name. An allergen can hide inside one, so
+					every grey chip above is weaker than it looks.
 				</p>
 			{/if}
 		</div>
@@ -243,8 +243,8 @@
 		</ul>
 		<p class="mt-2 text-xs leading-relaxed text-ink-faint">
 			Each serving carries its own label. The same dish name can be a different recipe at a
-			different venue — or even twice on one menu, from two suppliers — so allergens are never
-			merged across appearances.
+			different venue, or even twice on one menu from two suppliers, so allergens are never merged
+			across appearances.
 		</p>
 	</section>
 {/if}

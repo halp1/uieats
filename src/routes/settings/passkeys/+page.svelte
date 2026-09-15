@@ -54,8 +54,8 @@
 
 <h1 class="display rule-title pb-2 text-3xl">Passkeys</h1>
 <p class="mt-4 text-sm leading-relaxed text-ink-muted">
-	A passkey signs you in with your device's own unlock — face, fingerprint or PIN — instead of
-	waiting for an email. Your email code keeps working either way.
+	A passkey signs you in with your device's own unlock (face, fingerprint or PIN) instead of waiting
+	for an email. Your email code keeps working either way.
 </p>
 
 <section class="mt-8">

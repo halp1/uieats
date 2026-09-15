@@ -35,7 +35,7 @@ export const actions: Actions = {
 			clearPendingEmail(cookies);
 			return fail(400, {
 				restart: true,
-				message: 'That code has expired. Codes last ten minutes — request a new one.'
+				message: 'That code has expired. Codes last ten minutes, so request a new one.'
 			});
 		}
 		if (result.status === 'exhausted') {

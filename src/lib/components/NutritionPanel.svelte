@@ -94,7 +94,7 @@
 	</dl>
 
 	<p class="mt-2 text-[0.625rem] leading-snug text-ink-faint">
-		A dash means the university's label left that value blank or printed "NA" — not that the value
-		is zero. Percentages are daily values from upstream, on a 2,000 calorie diet.
+		A dash means the university's label left that value blank or printed "NA". It does not mean the
+		value is zero. Percentages are daily values from upstream, on a 2,000 calorie diet.
 	</p>
 </div>
