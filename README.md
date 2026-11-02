@@ -147,6 +147,39 @@ open.
 Leave out `headers` for anonymous access. `npx @modelcontextprotocol/inspector`
 pointed at the same URL is the quickest way to try it.
 
+### Sign in with OAuth (Gemini, Claude.ai)
+
+Clients that cannot take a pasted header connect to **`/mcp/me`** instead. It
+serves the same tools but requires sign-in. An anonymous request gets a `401`
+pointing at `/.well-known/oauth-protected-resource/mcp/me`, which leads the
+client to uieats' own authorization server:
+
+| Endpoint                                  | Purpose                                        |
+| ----------------------------------------- | ---------------------------------------------- |
+| `/.well-known/oauth-authorization-server` | Discovery metadata                             |
+| `/oauth/register`                         | Dynamic client registration (RFC 7591)         |
+| `/oauth/authorize`                        | Consent page, behind the normal site login     |
+| `/oauth/token`                            | Code exchange (PKCE S256 required) and refresh |
+| `/oauth/revoke`                           | RFC 7009 revocation                            |
+
+Access tokens last an hour. The refresh token is persistent, so a connected app
+stays connected until the user disconnects it from `/settings/tokens` or the app
+revokes it. One scope, `mcp`, read only.
+
+In Gemini, enter `https://your-host/mcp/me` and leave Client ID and secret
+empty: it registers itself. A client that wants a pre-shared id and secret gets
+one from
+
+```bash
+node scripts/oauth-client.ts --gemini          # Google's redirect hosts
+node scripts/oauth-client.ts --name=X --redirect=https://x.example/cb
+```
+
+SvelteKit's built-in cross-site form check is replaced by an identical one in
+`hooks.server.ts` that exempts only `/oauth/token`, `/oauth/register` and
+`/oauth/revoke`. Those accept form posts from other origins by design and never
+read a cookie. `tests/csrf.test.ts` pins the rest.
+
 ## Installable
 
 There is a manifest, a service worker and an icon, so it installs to a phone

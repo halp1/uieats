@@ -239,7 +239,10 @@ The app reports on itself too. Every page footer carries how fresh the menu data
 is and switches to a warning past 30 hours, and the web process logs once at boot
 if no successful run has finished inside that window. It never starts a scrape.
 
-The MCP endpoint at `/mcp` rides on the same process. The proxy must pass the
+The MCP endpoints at `/mcp` and `/mcp/me` ride on the same process, as do
+`/oauth/*` and `/.well-known/oauth-*`. `ORIGIN` must be the public URL, because
+it is what the OAuth discovery documents advertise; a wrong one sends clients to
+an address they cannot reach. The proxy must pass the
 `Authorization` header through untouched, or every token request becomes
 anonymous at best. Check with an `initialize` call:
 
