@@ -34,10 +34,33 @@
 
 <h1 class="display rule-title pb-2 text-3xl">Connected apps</h1>
 <p class="mt-4 text-sm leading-relaxed text-ink-muted">
-	A token lets an AI assistant read your allergens and saved dishes through the uieats MCP server at <span
-		class="font-mono text-ink">{data.mcpUrl}</span
-	>. It can read, never change anything.
+	AI assistants can read your allergens and saved dishes through the uieats MCP server. They can
+	never change anything.
 </p>
+
+<section class="mt-8">
+	<h2 class="eyebrow rule-group pb-1">Gemini, Claude and other apps that sign in</h2>
+	<p class="mt-3 text-sm">Use this URL and leave Client ID and secret empty.</p>
+	<div class="mt-2 flex items-center gap-2">
+		<input
+			readonly
+			value={`${data.mcpUrl}/me`}
+			aria-label="MCP server URL for apps that sign in"
+			class="min-w-0 flex-1 border border-ink bg-paper-sunk px-2 py-1.5 font-mono text-xs focus:ring-0"
+			onfocus={(e) => e.currentTarget.select()}
+		/>
+		<button
+			type="button"
+			onclick={() => copy(`${data.mcpUrl}/me`, 'oauth-url')}
+			class="shrink-0 border border-ink px-2 py-1.5 text-[0.6875rem] font-semibold hover:bg-paper-sunk"
+		>
+			{copied === 'oauth-url' ? 'Copied' : 'Copy'}
+		</button>
+	</div>
+	<p class="mt-2 text-xs text-ink-faint">
+		The app sends you back here to sign in and approve. It then appears under Connected apps.
+	</p>
+</section>
 
 {#if form && 'created' in form && form.created}
 	<section class="mt-8 border-2 border-ink p-4">
@@ -110,7 +133,7 @@
 {/if}
 
 <section class="mt-8">
-	<h2 class="eyebrow rule-group pb-1">Tokens</h2>
+	<h2 class="eyebrow rule-group pb-1">Tokens, for apps that take a header</h2>
 
 	{#if data.tokens.length === 0}
 		<p class="mt-3 text-sm text-ink-faint">No tokens yet.</p>
