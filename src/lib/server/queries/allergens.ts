@@ -99,6 +99,22 @@ export function getDietTags(db: Db): AllergenRef[] {
 }
 
 /**
+ * The diet tags a user ticked. Kept apart from `getAllergenSelection`, which
+ * excludes diets structurally so they can never reach `verdictFor`.
+ */
+export function getUserDietTags(db: Db, userId: number | null): AllergenRef[] {
+	if (userId === null) return [];
+	return db
+		.prepare<AllergenRow>(
+			`SELECT a.id, a.slug, a.label, a.kind, a.covered_by_trait_vocabulary, a.parent_id, a.sort
+			 FROM user_allergen ua JOIN allergen a ON a.id = ua.allergen_id
+			 WHERE ua.user_id = ? AND a.kind = 'diet' ORDER BY a.sort`
+		)
+		.all(userId)
+		.map(toRef);
+}
+
+/**
  * What the user asked to be warned about, each expanded to its descendants.
  *
  * `kind = 'diet'` is excluded structurally rather than by convention: a diet
