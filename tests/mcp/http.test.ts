@@ -15,7 +15,7 @@ beforeEach(() => {
 		.run('student@illinois.edu', 1).lastInsertRowid;
 });
 
-function post(body: unknown, auth?: string) {
+function post(body: unknown, auth?: string, path = '/mcp') {
 	const headers: Record<string, string> = {
 		'content-type': 'application/json',
 		accept: 'application/json, text/event-stream'
@@ -23,7 +23,12 @@ function post(body: unknown, auth?: string) {
 	if (auth) headers.authorization = auth;
 	return handleMcpRequest(
 		db,
-		new Request('http://localhost/mcp', { method: 'POST', headers, body: JSON.stringify(body) })
+		new Request(`http://localhost${path}`, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify(body)
+		}),
+		{ origin: 'http://localhost', requireAuth: path === '/mcp/me' }
 	);
 }
 
@@ -55,7 +60,17 @@ describe('POST /mcp', () => {
 		for (const auth of ['Bearer garbage', 'Basic abc', `Bearer ${token}`]) {
 			const res = await post(initialize, auth);
 			expect(res.status).toBe(401);
-			expect(res.headers.get('www-authenticate')).toMatch(/^Bearer /);
+			expect(res.headers.get('www-authenticate')).toMatch(/error="invalid_(token|request)"/);
 		}
+	});
+
+	it('the personal endpoint challenges anonymous callers toward OAuth discovery', async () => {
+		const res = await post(initialize, undefined, '/mcp/me');
+		expect(res.status).toBe(401);
+		expect(res.headers.get('www-authenticate')).toContain(
+			'resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp/me"'
+		);
+		// No error code: a missing token is a challenge, not a failure (RFC 6750 3.1).
+		expect(res.headers.get('www-authenticate')).not.toContain('error=');
 	});
 });

@@ -17,6 +17,8 @@
  * flagged".
  */
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { ACCESS_TOKEN_PREFIX, resolveAccessToken } from '../auth/oauth.ts';
+import type { SessionUser } from '../auth/session.ts';
 import { parseBearer, resolveApiToken } from '../auth/tokens.ts';
 import type { Db } from '../db/driver.ts';
 import { buildMcpServer } from './server.ts';
@@ -40,27 +42,63 @@ function withCors(response: Response): Response {
 	});
 }
 
-function unauthorized(message: string): Response {
+export interface McpRequestOptions {
+	/**
+	 * Refuse anonymous callers with a 401 that points at the OAuth metadata.
+	 * That 401 is how an OAuth-only client (Gemini, Claude.ai) learns it has to
+	 * sign the user in, so the personal endpoint needs it and `/mcp` must not.
+	 */
+	requireAuth?: boolean;
+	/** The site origin, for the resource_metadata URL in WWW-Authenticate. */
+	origin: string;
+}
+
+function resourceMetadataUrl(request: Request, origin: string): string {
+	return `${origin}/.well-known/oauth-protected-resource${new URL(request.url).pathname}`;
+}
+
+function unauthorized(message: string, metadataUrl: string, error?: string): Response {
+	const params = [
+		'realm="uieats"',
+		`resource_metadata="${metadataUrl}"`,
+		...(error ? [`error="${error}"`, `error_description="${message}"`] : [])
+	];
 	return withCors(
 		new Response(JSON.stringify({ jsonrpc: '2.0', error: { code: -32001, message }, id: null }), {
 			status: 401,
 			headers: {
 				'Content-Type': 'application/json',
-				'WWW-Authenticate': `Bearer error="invalid_token", error_description="${message}"`
+				'WWW-Authenticate': `Bearer ${params.join(', ')}`
 			}
 		})
 	);
 }
 
-export async function handleMcpRequest(db: Db, request: Request): Promise<Response> {
+/** A personal access token or an OAuth access token, told apart by prefix. */
+export function resolveBearerUser(db: Db, token: string): SessionUser | null {
+	return token.startsWith(ACCESS_TOKEN_PREFIX)
+		? resolveAccessToken(db, token)
+		: resolveApiToken(db, token);
+}
+
+export async function handleMcpRequest(
+	db: Db,
+	request: Request,
+	options: McpRequestOptions
+): Promise<Response> {
+	const metadata = resourceMetadataUrl(request, options.origin);
 	const bearer = parseBearer(request.headers.get('authorization'));
-	let user = null;
+	let user: SessionUser | null = null;
 	if (bearer.kind === 'malformed') {
-		return unauthorized('Authorization must be "Bearer <token>"');
+		return unauthorized('Authorization must be "Bearer <token>"', metadata, 'invalid_request');
 	}
 	if (bearer.kind === 'token') {
-		user = resolveApiToken(db, bearer.token);
-		if (!user) return unauthorized('Unknown or revoked access token');
+		user = resolveBearerUser(db, bearer.token);
+		// invalid_token is what tells an OAuth client to use its refresh token.
+		if (!user) return unauthorized('Unknown, expired or revoked token', metadata, 'invalid_token');
+	}
+	if (!user && options.requireAuth) {
+		return unauthorized('Sign in to uieats to use this endpoint', metadata);
 	}
 
 	const server = buildMcpServer(db, user);
