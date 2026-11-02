@@ -33,13 +33,7 @@ import { getMenusForScope, getUnitsServingOn, type ScopeResult } from '../querie
 import { getFavoritesServedFrom, searchItems } from '../queries/search.ts';
 import { getUnitBySlug, getUnitTree, type UnitRef } from '../queries/units.ts';
 import { addDays, campusToday } from '../../dates.ts';
-import {
-	CROSS_CONTACT_NOTICE,
-	nutritionView,
-	summaryView,
-	traitSlugs,
-	verdictView
-} from './serialize.ts';
+import { CROSS_CONTACT_NOTICE, nutritionView, summaryView, traitSlugs } from './serialize.ts';
 
 export const TOKEN_HINT =
 	'This tool needs an access token. Create one at /settings/tokens on the uieats site and send it ' +
@@ -490,7 +484,7 @@ export function buildMcpServer(db: Db, user: SessionUser | null): McpServer {
 										...row,
 										unchecked: s.verdicts
 											.filter((x) => x.verdict === 'unknown')
-											.map((x) => verdictView(x).label)
+											.map((x) => x.allergen.label)
 									});
 							}
 						}
