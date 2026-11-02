@@ -78,9 +78,9 @@ try {
 	// reasoning that keeps scraping out of the web process applies to anything
 	// that takes the write lock.
 	const swept = runHousekeeping(db);
-	if (swept.sessions + swept.loginCodes + swept.challenges > 0) {
+	if (swept.sessions + swept.loginCodes + swept.challenges + swept.oauth > 0) {
 		console.log(
-			`swept      ${swept.sessions} sessions, ${swept.loginCodes} login codes, ${swept.challenges} challenges`
+			`swept      ${swept.sessions} sessions, ${swept.loginCodes} login codes, ${swept.challenges} challenges, ${swept.oauth} oauth rows`
 		);
 	}
 

@@ -64,8 +64,10 @@ export const actions: Actions = {
 
 		// A brand-new account has no allergens yet, and the app does nothing
 		// useful until it does -- so land there rather than on a menu with no
-		// chips on it.
+		// chips on it. The exception is an app waiting on an OAuth consent: that
+		// flow has a client on the other end, and detouring would strand it.
 		const next = takeNext(cookies);
-		redirect(303, result.isNewAccount ? '/settings/allergens?welcome=1' : next);
+		const midOAuth = next.startsWith('/oauth/authorize');
+		redirect(303, result.isNewAccount && !midOAuth ? '/settings/allergens?welcome=1' : next);
 	}
 };
