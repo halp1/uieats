@@ -34,11 +34,11 @@
 		},
 		{
 			href: '/settings/tokens',
-			title: 'Access tokens',
+			title: 'Connected apps and tokens',
 			detail:
 				data.tokenCount === 0
 					? 'None, so assistants see menus only'
-					: `${data.tokenCount} token${data.tokenCount === 1 ? '' : 's'}`
+					: `${data.tokenCount} connected`
 		}
 	]);
 </script>

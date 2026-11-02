@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
+import { disconnectApp, listConnectedApps } from '$lib/server/auth/oauth';
 import {
 	MAX_TOKEN_NAME,
 	TokenError,
@@ -13,6 +14,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	if (!locals.user) redirect(303, '/auth/login?next=/settings/tokens');
 	return {
 		tokens: listApiTokens(getDb(), locals.user.id),
+		apps: listConnectedApps(getDb(), locals.user.id),
 		mcpUrl: `${url.origin}/mcp`,
 		maxName: MAX_TOKEN_NAME
 	};
@@ -41,5 +43,15 @@ export const actions: Actions = {
 			return fail(404, { message: 'That token is already gone.' });
 		}
 		return { revoked: true };
+	},
+
+	disconnect: async ({ locals, request }) => {
+		if (!locals.user) redirect(303, '/auth/login?next=/settings/tokens');
+
+		const id = Number((await request.formData()).get('id'));
+		if (!Number.isInteger(id) || !disconnectApp(getDb(), locals.user.id, id)) {
+			return fail(404, { message: 'That app is already disconnected.' });
+		}
+		return { disconnected: true };
 	}
 };

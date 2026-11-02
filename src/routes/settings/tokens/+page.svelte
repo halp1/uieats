@@ -30,9 +30,9 @@
 	}
 </script>
 
-<svelte:head><title>Access tokens — uieats</title></svelte:head>
+<svelte:head><title>Connected apps — uieats</title></svelte:head>
 
-<h1 class="display rule-title pb-2 text-3xl">Access tokens</h1>
+<h1 class="display rule-title pb-2 text-3xl">Connected apps</h1>
 <p class="mt-4 text-sm leading-relaxed text-ink-muted">
 	A token lets an AI assistant read your allergens and saved dishes through the uieats MCP server at <span
 		class="font-mono text-ink">{data.mcpUrl}</span
@@ -78,8 +78,39 @@
 	</section>
 {/if}
 
+{#if data.apps.length > 0}
+	<section class="mt-8">
+		<h2 class="eyebrow rule-group pb-1">Connected apps</h2>
+		<ul class="mt-1">
+			{#each data.apps as app (app.id)}
+				<li class="rule-hair flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2">
+					<div class="min-w-0">
+						<p class="text-sm font-medium">{app.name}</p>
+						<p class="font-mono text-[0.6875rem] text-ink-faint">
+							connected {describeAge(app.createdAt)},
+							{app.lastUsedAt ? `last used ${describeAge(app.lastUsedAt)}` : 'never used'}
+						</p>
+					</div>
+					<form method="POST" action="?/disconnect" use:enhance class="shrink-0">
+						<input type="hidden" name="id" value={app.id} />
+						<button
+							type="submit"
+							class="border border-ink px-2 py-0.5 text-[0.6875rem] font-semibold hover:bg-paper-sunk"
+						>
+							Disconnect
+						</button>
+					</form>
+				</li>
+			{/each}
+		</ul>
+		{#if form && 'disconnected' in form && form.disconnected}
+			<p class="mt-3 text-sm font-semibold">App disconnected.</p>
+		{/if}
+	</section>
+{/if}
+
 <section class="mt-8">
-	<h2 class="eyebrow rule-group pb-1">On your account</h2>
+	<h2 class="eyebrow rule-group pb-1">Tokens</h2>
 
 	{#if data.tokens.length === 0}
 		<p class="mt-3 text-sm text-ink-faint">No tokens yet.</p>
