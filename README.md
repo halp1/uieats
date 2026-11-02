@@ -105,6 +105,48 @@ node scripts/capture-fixtures.ts          # re-capture upstream; never in CI
 node scripts/write-fixture-manifest.ts    # after re-capturing
 ```
 
+## MCP server
+
+The web process also serves an [MCP](https://modelcontextprotocol.io) endpoint
+at `/mcp` (Streamable HTTP, stateless). It needs no extra process and no extra
+configuration.
+
+Without credentials it answers questions about menus. With a personal access
+token it answers them for one person: every dish carries verdicts for that
+user's registered allergens, from the same `verdict.ts` pipeline the pages use.
+Users create and revoke tokens at `/settings/tokens`. Only a hash is stored, and
+tokens can read but never write.
+
+| Tool                    | Token    | What it returns                                                   |
+| ----------------------- | -------- | ----------------------------------------------------------------- |
+| `list_locations`        | optional | Halls, standalone units and venues, and which serve today         |
+| `get_menu`              | optional | A location's menus for a date, filterable by venue, meal and diet |
+| `search_dishes`         | optional | Dishes by name across campus, soonest serving first               |
+| `get_dish`              | optional | Every upcoming serving with label, ingredients and "may contain"  |
+| `list_allergens`        | optional | Allergen taxonomy and diet tag slugs                              |
+| `get_my_profile`        | required | Registered allergens, custom allergens and diet tags              |
+| `get_my_favorites`      | required | Saved dishes and where they are served soon                       |
+| `find_unflagged_dishes` | required | Dishes with no warning, split into `checked` and `unverified`     |
+
+A wrong or revoked token is a `401`. It never falls back to anonymous, because
+an anonymous answer has no verdicts and an agent could read that as "nothing
+flagged". The session cookie is ignored on `/mcp`, which is why CORS can be
+open.
+
+```json
+{
+	"mcpServers": {
+		"uieats": {
+			"url": "https://your-host/mcp",
+			"headers": { "Authorization": "Bearer uieats_pat_..." }
+		}
+	}
+}
+```
+
+Leave out `headers` for anonymous access. `npx @modelcontextprotocol/inspector`
+pointed at the same URL is the quickest way to try it.
+
 ## Installable
 
 There is a manifest, a service worker and an icon, so it installs to a phone
