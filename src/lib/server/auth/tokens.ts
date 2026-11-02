@@ -127,9 +127,7 @@ export function revokeApiToken(db: Db, userId: number, id: number): boolean {
 }
 
 export type BearerHeader =
-	| { kind: 'none' }
-	| { kind: 'token'; token: string }
-	| { kind: 'malformed' };
+	{ kind: 'none' } | { kind: 'token'; token: string } | { kind: 'malformed' };
 
 export function parseBearer(header: string | null | undefined): BearerHeader {
 	if (header === null || header === undefined || header.trim() === '') return { kind: 'none' };
