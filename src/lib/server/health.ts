@@ -9,6 +9,7 @@
  */
 import { STALE_AFTER_SECONDS, describeAge, unixNow } from '../dates.ts';
 import { deleteStaleCodes } from './auth/codes.ts';
+import { deleteStaleOAuthRows } from './auth/oauth.ts';
 import { deleteExpiredSessions } from './auth/session.ts';
 import { deleteExpiredChallenges } from './auth/webauthn.ts';
 import type { Db } from './db/driver.ts';
@@ -64,6 +65,7 @@ export interface HousekeepingResult {
 	sessions: number;
 	loginCodes: number;
 	challenges: number;
+	oauth: number;
 }
 
 /**
@@ -82,6 +84,7 @@ export function runHousekeeping(db: Db, now: number = unixNow()): HousekeepingRe
 	return db.transaction(() => ({
 		sessions: deleteExpiredSessions(db, now),
 		loginCodes: deleteStaleCodes(db, now),
-		challenges: deleteExpiredChallenges(db, now)
+		challenges: deleteExpiredChallenges(db, now),
+		oauth: deleteStaleOAuthRows(db, now)
 	}));
 }

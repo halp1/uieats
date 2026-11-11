@@ -10,6 +10,7 @@ import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { getDb } from '$lib/server/db';
 import { SESSION_COOKIE, resolveSession } from '$lib/server/auth/session';
+import { isForbiddenCrossSiteForm } from '$lib/server/csrf';
 import { logStartupHealth } from '$lib/server/health';
 
 // Once, at boot. Stale menu data is the failure mode a user cannot detect: the
@@ -17,6 +18,14 @@ import { logStartupHealth } from '$lib/server/health';
 logStartupHealth(getDb());
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// Replaces SvelteKit's own check (disabled in vite.config.ts). Like the
+	// original it only runs in production.
+	if (!dev && isForbiddenCrossSiteForm(event.request, event.url)) {
+		return new Response(`Cross-site ${event.request.method} form submissions are forbidden`, {
+			status: 403
+		});
+	}
+
 	const token = event.cookies.get(SESSION_COOKIE);
 	const session = resolveSession(getDb(), token);
 

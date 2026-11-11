@@ -31,6 +31,14 @@
 				data.passkeyCount === 0
 					? 'None, so you sign in by email code'
 					: `${data.passkeyCount} passkey${data.passkeyCount === 1 ? '' : 's'}`
+		},
+		{
+			href: '/settings/tokens',
+			title: 'Connected apps and tokens',
+			detail:
+				data.tokenCount === 0
+					? 'None, so assistants see menus only'
+					: `${data.tokenCount} connected`
 		}
 	]);
 </script>

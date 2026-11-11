@@ -12,7 +12,12 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter()
+			adapter: adapter(),
+			// Enforced in hooks.server.ts instead, with an exemption for the OAuth
+			// token, registration and revocation endpoints. Those take form posts
+			// from other origins by design (RFC 6749 says so) and authenticate by
+			// client secret or PKCE, never by cookie, so there is nothing to forge.
+			csrf: { trustedOrigins: ['*'] }
 		})
 	],
 	test: {

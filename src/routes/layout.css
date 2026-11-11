@@ -258,3 +258,19 @@
 		font-weight: 600;
 	}
 }
+
+/* Tailwind's preflight resets button cursors to the default arrow. Every
+   clickable control is a button or submit, so the pointer belongs here, once. */
+button,
+[type='button'],
+[type='submit'],
+[type='reset'] {
+	cursor: pointer;
+}
+
+button:disabled,
+[type='button']:disabled,
+[type='submit']:disabled,
+[type='reset']:disabled {
+	cursor: default;
+}
