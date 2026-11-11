@@ -2,6 +2,7 @@
 	import './layout.css';
 	import Search from '@lucide/svelte/icons/search';
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import Utensils from '@lucide/svelte/icons/utensils';
 	import { page } from '$app/state';
 	import Disclaimer from '$lib/components/Disclaimer.svelte';
 	import { describeAge } from '$lib/dates';
@@ -30,10 +31,14 @@
 	<header class="rule-title flex items-end justify-between gap-4 pt-6 pb-1">
 		<a href="/" class="display text-3xl tracking-[-0.04em] lowercase">uieats</a>
 
-		<nav class="flex items-center gap-3 pb-1 text-xs font-semibold">
+		<nav class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 pb-1 text-xs font-semibold">
 			<a href="/search" class="flex items-center gap-1 hover:underline">
 				<Search class="size-3.5" />
 				Search
+			</a>
+			<a href="/plan" class="flex items-center gap-1 hover:underline">
+				<Utensils class="size-3.5" />
+				Planner
 			</a>
 			<a href="/settings/allergens" class="flex items-center gap-1 hover:underline">
 				<SlidersHorizontal class="size-3.5" />

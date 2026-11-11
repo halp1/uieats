@@ -40,6 +40,7 @@ describe('migrations', () => {
 		const expected = [
 			'allergen',
 			'allergen_alias',
+			'body_profile',
 			'api_token',
 			'favorite',
 			'item',
