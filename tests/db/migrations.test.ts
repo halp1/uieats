@@ -40,8 +40,8 @@ describe('migrations', () => {
 		const expected = [
 			'allergen',
 			'allergen_alias',
-			'body_profile',
 			'api_token',
+			'body_profile',
 			'favorite',
 			'item',
 			'item_allergen',
@@ -95,6 +95,48 @@ describe('migrations', () => {
 
 		db.close();
 	});
+
+	it.each([8, 9, 10])('upgrades a version %i database without losing existing data', (version) => {
+		const db = openDatabase(':memory:');
+		try {
+			const migrations = loadMigrations();
+			migrate(db, migrations.slice(0, version));
+			db.exec("INSERT INTO user (id, email, created_at) VALUES (1, 'migration@example.com', 0)");
+
+			const result = migrate(db);
+			expect(result.from).toBe(version);
+			expect(result.to).toBe(migrations.length);
+			expect(result.applied).toEqual(migrations.slice(version).map((m) => m.name));
+			expect(tableNames(db)).toEqual(
+				expect.arrayContaining(['api_token', 'oauth_client', 'body_profile'])
+			);
+			expect(db.prepare('SELECT email FROM user WHERE id = 1').get()).toEqual({
+				email: 'migration@example.com'
+			});
+			expect(migrate(db).applied).toEqual([]);
+		} finally {
+			db.close();
+		}
+	});
+
+	it.each([2, 4])(
+		'rejects a duplicate or gap at version %i before changing the database',
+		(version) => {
+			const db = openDatabase(':memory:');
+			try {
+				const migrations = [
+					{ version: 1, name: '0001_a.sql', sql: 'CREATE TABLE a (x INTEGER) STRICT;' },
+					{ version: 2, name: '0002_b.sql', sql: 'CREATE TABLE b (x INTEGER) STRICT;' },
+					{ version, name: 'invalid.sql', sql: 'CREATE TABLE c (x INTEGER) STRICT;' }
+				];
+				expect(() => migrate(db, migrations)).toThrow();
+				expect(db.pragma<number>('user_version')).toBe(0);
+				expect(tableNames(db)).toEqual([]);
+			} finally {
+				db.close();
+			}
+		}
+	);
 
 	it('rolls back a failed migration whole', () => {
 		const db = openDatabase(':memory:');

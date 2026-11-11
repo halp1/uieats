@@ -84,6 +84,10 @@ export function migrate(db: Db, migrations: Migration[] = loadMigrations()): Mig
 				`Migration versions must be contiguous from 1; expected ${expected}, got ${m.version} (${m.name})`
 			);
 		}
+	}
+
+	// Reject an invalid sequence before any migration can change the database.
+	for (const m of migrations) {
 		if (m.version <= from) continue;
 
 		// A migration is all-or-nothing. user_version is bumped inside the same
